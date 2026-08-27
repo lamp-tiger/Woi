@@ -989,7 +989,7 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
     // 显示导入确认对话框
     function showImportConfirm() {
         const text = document.getElementById('import-area').value.replace(/\*+/g, '');
-        const blocks = text.split(/\n(?=[①-⑩])/);
+        const blocks = text.split(/\n(?=[①-⑳㉑-㉟㊱-㊵])/);
         
         pendingImportWords = [];
         
