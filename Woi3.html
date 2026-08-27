@@ -295,7 +295,20 @@ SUPABASE 数据库表结构说明
 
     <div id="panel-lib" class="panel hidden">
         <div class="card">
-            <h3 class="lib-title">🗃️ 词库管理 <button class="btn-action btn-danger btn-text-clear" onclick="clearAllData()" style="float:right; font-size:12px;">清空全部</button></h3>
+            <h3 class="lib-title">
+    🗃️ 词库管理
+    <button class="btn-action btn-danger btn-text-clear"
+            onclick="clearAllData()"
+            style="float:right; font-size:12px;">
+        清空全部
+    </button>
+
+    <button class="btn-action"
+            onclick="removeDuplicates()"
+            style="float:right; font-size:12px; margin-right:8px;">
+        删除重复
+    </button>
+</h3>
             <div class="table-container">
                 <table>
                     <thead>
