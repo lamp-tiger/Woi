@@ -1092,6 +1092,49 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
         save(); renderLib();
     }
 
+
+
+    async function removeDuplicates() {
+
+    const seen = new Set();
+    const duplicates = [];
+
+    for (const w of words) {
+
+        if (w.deleted) continue;
+
+        // 去掉首尾空格后进行比较
+        const key = (w.word || '').trim();
+
+        if (!key) continue;
+
+        if (seen.has(key)) {
+            duplicates.push(w);
+        } else {
+            seen.add(key);
+        }
+    }
+
+    if (duplicates.length === 0) {
+        alert('没有发现重复单词');
+        return;
+    }
+
+    if (!confirm(`发现 ${duplicates.length} 个重复单词，是否删除？`)) {
+        return;
+    }
+
+    for (const w of duplicates) {
+        w.deleted = true;
+        await syncWordToCloud(w);
+    }
+
+    save();
+    renderLib();
+
+    alert(`已删除 ${duplicates.length} 个重复单词`);
+}
+    
     function renderLinks() {
         const list = document.getElementById('link-list');
         list.innerHTML = favLinks.map((link, i) => `
