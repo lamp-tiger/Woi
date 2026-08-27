@@ -997,7 +997,7 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
             const lines = block.split('\n').map(l => l.trim());
             let w = { id: crypto.randomUUID(), status: 'new', deleted: false, count: 0, nextTime: Date.now() };
             lines.forEach(l => {
-                if (l.match(/^[①-⑩]/)) { let m = l.match(/^[①-⑩]\s*(.+)$/); if (m) w.word = m[1].trim(); }
+                if (l.match(/^[①-⑳㉑-㉟㊱-㊵]/)) { let m = l.match(/^[①-⑳㉑-㉟㊱-㊵]\s*(.+)$/); if (m) w.word = m[1].trim(); }
                 if (l.startsWith('原句：') || l.startsWith('原文：')) w.origJP = l.replace(/原[句文]：/, '').trim();
                 if (l.startsWith('例句：')) w.genJP = l.replace('例句：', '').trim();
                 if (l.startsWith('原句翻译：') || l.startsWith('原文訳：')) w.origCN = l.replace(/原[句文]翻[译訳]：/, '').trim();
