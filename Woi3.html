@@ -264,10 +264,59 @@ SUPABASE 数据库表结构说明
             </div>
 
             <h3 style="margin-top:25px;" class="ai-api-title">🤖 AI API 设置</h3>
-            <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
-                <input type="text" id="ai-api-url" placeholder="API URL (例如: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent)" style="padding:8px; width:100%; box-sizing:border-box;">
-                <input type="password" id="ai-api-key" placeholder="API KEY" style="padding:8px; width:100%; box-sizing:border-box;">
-            </div>
+
+<div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
+
+    <label style="font-size:13px;">API URL</label>
+    <input
+        type="text"
+        id="ai-api-url"
+        placeholder="https://api.openai.com/v1/responses"
+        style="padding:8px; width:100%; box-sizing:border-box;"
+    >
+
+    <label style="font-size:13px;">API KEY</label>
+    <input
+        type="password"
+        id="ai-api-key"
+        placeholder="sk-..."
+        style="padding:8px; width:100%; box-sizing:border-box;"
+    >
+
+    <label style="font-size:13px;">模型</label>
+    <select
+        id="ai-model"
+        style="padding:8px; width:100%; box-sizing:border-box;"
+    >
+        <option value="gpt-5.6-luna">GPT-5.6 Luna（推荐 / 最便宜）</option>
+        <option value="gpt-5.6-terra">GPT-5.6 Terra（质量更高）</option>
+        <option value="gpt-5.6-sol">GPT-5.6 Sol（最高质量）</option>
+    </select>
+
+    <label style="font-size:13px;">Reasoning</label>
+    <select
+        id="ai-reasoning"
+        style="padding:8px; width:100%; box-sizing:border-box;"
+    >
+        <option value="none">None（最省）</option>
+        <option value="low" selected>Low（推荐）</option>
+        <option value="medium">Medium</option>
+    </select>
+
+</div>
+
+<div style="display:flex; gap:10px; margin-bottom:10px;">
+    <button class="btn-action btn-text-save-api" onclick="saveApiConfig()">
+        保存 API 配置
+    </button>
+
+    <button class="btn-action btn-primary btn-text-ai-import" onclick="aiImport()">
+        🚀 AI 解析并导入
+    </button>
+</div>
+
+<div id="ai-status" style="font-size:13px; color:#666;"></div>
+            
             <div style="display:flex; gap:10px; margin-bottom:10px;">
                 <button class="btn-action btn-text-save-api" onclick="saveApiConfig()">保存 API 配置</button>
                 <button class="btn-action btn-primary btn-text-ai-import" onclick="aiImport()">🚀 AI 解析并导入</button>
@@ -644,9 +693,11 @@ SUPABASE 数据库表结构说明
 
     // AI API 默认配置
     const DEFAULT_API_CONFIG = {
-        url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent',
-        key: ''
-    };
+    url: 'https://api.openai.com/v1/responses',
+    key: '',
+    model: 'gpt-5.6-luna',
+    reasoning: 'low'
+};
 
     let apiConfig = JSON.parse(localStorage.getItem('en_v3_api_config') || JSON.stringify(DEFAULT_API_CONFIG));
 
@@ -1278,85 +1329,225 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
     }
 
     function saveApiConfig() {
-        apiConfig = {
-            url: document.getElementById('ai-api-url').value.trim(),
-            key: document.getElementById('ai-api-key').value.trim()
-        };
-        localStorage.setItem('en_v3_api_config', JSON.stringify(apiConfig));
-        const status = document.getElementById('ai-status');
-        status.textContent = currentLang === 'ja' ? 'API設定を保存しました' : 'API config saved';
-        setTimeout(() => status.textContent = '', 2000);
-    }
+    apiConfig = {
+        url: document.getElementById('ai-api-url').value.trim(),
+        key: document.getElementById('ai-api-key').value.trim(),
+        model: document.getElementById('ai-model').value,
+        reasoning: document.getElementById('ai-reasoning').value
+    };
+
+    localStorage.setItem(
+        'en_v3_api_config',
+        JSON.stringify(apiConfig)
+    );
+
+    const status = document.getElementById('ai-status');
+
+    status.textContent =
+        currentLang === 'ja'
+        ? 'API設定を保存しました'
+        : 'API config saved';
+
+    setTimeout(() => {
+        status.textContent = '';
+    }, 2000);
+}
+
+
 
     async function aiImport() {
-        let url = (document.getElementById('ai-api-url').value || '').trim();
-        const key = (document.getElementById('ai-api-key').value || '').trim();
-        const userText = document.getElementById('import-area').value.trim();
-        const promptText = document.getElementById('prompt-content').value.trim();
-        const statusEl = document.getElementById('ai-status');
 
-        if (!url || !key) {
-            statusEl.textContent = currentLang === 'ja' ? 'API URLとKEYを入力してください' : 'Please enter API URL and KEY';
-            return;
-        }
-        if (!userText) {
-            statusEl.textContent = currentLang === 'ja' ? 'インポートするテキストを貼り付けてください' : 'Please paste text to import';
-            return;
-        }
-        if (!promptText) {
-            statusEl.textContent = currentLang === 'ja' ? 'プロンプトが空です' : 'Prompt is empty';
-            return;
-        }
+    const url =
+        (document.getElementById('ai-api-url').value || '').trim();
 
-        statusEl.textContent = currentLang === 'ja' ? 'AIに問い合わせ中...' : 'Asking AI...';
+    const key =
+        (document.getElementById('ai-api-key').value || '').trim();
 
-        // Gemini API 要求将 Key 直接作为 URL 参数拼接到地址后面
-        let fetchUrl = url;
-        if (fetchUrl.includes('?')) {
-            fetchUrl += `&key=${key}`;
-        } else {
-            fetchUrl += `?key=${key}`;
-        }
+    const model =
+        document.getElementById('ai-model').value || 'gpt-5.6-luna';
 
-        try {
-            const res = await fetch(fetchUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            role: "user",
-                            parts: [{ text: promptText + "\n\n要解析的文章内容如下：\n" + userText }]
-                        }
-                    ],
-                    generationConfig: {
-                        temperature: 0.2
-                    }
-                })
-            });
+    const reasoning =
+        document.getElementById('ai-reasoning').value || 'low';
 
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error('HTTP ' + res.status + ': ' + (errData.error?.message || 'Unknown error'));
-            }
+    const userText =
+        document.getElementById('import-area').value.trim();
 
-            const data = await res.json();
-            const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (!content) {
-                throw new Error('Empty AI response');
-            }
+    const promptText =
+        document.getElementById('prompt-content').value.trim();
 
-            // 将 AI 返回内容填入 import-area 并调用解析
-            document.getElementById('import-area').value = content;
-            statusEl.textContent = currentLang === 'ja' ? '解析中...' : 'Parsing...';
-            showImportConfirm();
-        } catch (e) {
-            console.error(e);
-            statusEl.textContent = (currentLang === 'ja' ? 'エラー: ' : 'Error: ') + e.message;
-        }
+    const statusEl =
+        document.getElementById('ai-status');
+
+
+    // 检查 API 设置
+    if (!url || !key) {
+
+        statusEl.textContent =
+            currentLang === 'ja'
+            ? 'API URLとKEYを入力してください'
+            : 'Please enter API URL and KEY';
+
+        return;
     }
+
+
+    // 检查输入文本
+    if (!userText) {
+
+        statusEl.textContent =
+            currentLang === 'ja'
+            ? 'インポートするテキストを貼り付けてください'
+            : 'Please paste text to import';
+
+        return;
+    }
+
+
+    // 检查提示词
+    if (!promptText) {
+
+        statusEl.textContent =
+            currentLang === 'ja'
+            ? 'プロンプトが空です'
+            : 'Prompt is empty';
+
+        return;
+    }
+
+
+    statusEl.textContent =
+        `AI 处理中... (${model})`;
+
+
+    try {
+
+        const requestBody = {
+
+            model: model,
+
+            reasoning: {
+                effort: reasoning
+            },
+
+            input:
+                promptText +
+                "\n\n" +
+                "下面是需要整理的文本：\n" +
+                userText
+        };
+
+
+        const res = await fetch(url, {
+
+            method: 'POST',
+
+            headers: {
+
+                'Content-Type': 'application/json',
+
+                'Authorization':
+                    'Bearer ' + key
+            },
+
+            body: JSON.stringify(requestBody)
+
+        });
+
+
+        // API 报错
+        if (!res.ok) {
+
+            let errorMessage = '';
+
+            try {
+
+                const errData = await res.json();
+
+                errorMessage =
+                    errData.error?.message ||
+                    JSON.stringify(errData);
+
+            } catch {
+
+                errorMessage =
+                    await res.text();
+
+            }
+
+            throw new Error(
+                'HTTP ' +
+                res.status +
+                ': ' +
+                errorMessage
+            );
+        }
+
+
+        const data =
+            await res.json();
+
+
+        // Responses API 返回的文本
+        let content =
+            data.output_text;
+
+
+        // 如果 output_text 不存在，手动读取 output
+        if (!content && data.output) {
+
+            for (const item of data.output) {
+
+                if (!item.content) continue;
+
+                for (const part of item.content) {
+
+                    if (
+                        part.type === 'output_text' &&
+                        part.text
+                    ) {
+
+                        content =
+                            (content || '') +
+                            part.text;
+                    }
+                }
+            }
+        }
+
+
+        if (!content) {
+
+            console.log(data);
+
+            throw new Error(
+                'AI 返回结果为空'
+            );
+        }
+
+
+        // 把 AI 结果放回导入框
+        document.getElementById(
+            'import-area'
+        ).value = content;
+
+
+        statusEl.textContent =
+            'AI 完成，正在解析...';
+
+
+        // 调用原来的解析程序
+        showImportConfirm();
+
+
+    } catch (e) {
+
+        console.error(e);
+
+        statusEl.textContent =
+            'API 错误：' +
+            e.message;
+    }
+}
     
     function copyPrompt(e) { 
         document.getElementById('prompt-content').select(); 
