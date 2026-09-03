@@ -959,6 +959,7 @@
     fill: white;
 }
     </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -1433,6 +1434,16 @@ SUPABASE 数据库表结构说明
 </div>
 
 <script>
+
+const SUPABASE_URL = '你的 Supabase Project URL';
+const SUPABASE_ANON_KEY = '你的 Supabase anon key';
+
+const sb = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+let currentUser = null;
 
     // 当前语言设置
     let currentLang = localStorage.getItem('lang') || 'en';
@@ -5579,7 +5590,7 @@ function showLoginPage(message = "") {
 async function loginWoi(event) {
     event.preventDefault();
 
-    const username =
+    const email =
         document.getElementById("woi-username").value.trim();
 
     const password =
@@ -5596,55 +5607,70 @@ async function loginWoi(event) {
     button.textContent = "Logging in...";
 
     try {
-        const response = await fetch("/api/login", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                username,
+        const { data, error } =
+            await sb.auth.signInWithPassword({
+                email,
                 password
-            })
-        });
+            });
 
-        const data = await response.json();
+        if (error) throw error;
 
-        if (!response.ok || !data.ok) {
-            message.textContent =
-                data.error || "Login failed";
+        currentUser = data.user;
 
-            button.disabled = false;
-            button.textContent = "Log in";
-            return;
-        }
-
-        // 登录成功后重新载入完整网页
-        window.location.reload();
+        location.reload();
 
     } catch (error) {
         console.error("Login failed:", error);
 
         message.textContent =
-            "Unable to connect. Please try again.";
+            "Login failed: " + error.message;
 
         button.disabled = false;
-        button.textContent = "Log in";
+        button.textContent = "Login";
     }
 }
 
 
 async function startWoi() {
     try {
-        const response = await fetch('/api/me', { credentials:'same-origin' });
-        const data = response.ok ? await response.json() : null;
-        if (!data || !data.authenticated) { showLoginPage(); return; }
+        const {
+            data: { session }
+        } = await sb.auth.getSession();
+
+        if (!session || !session.user) {
+            currentUser = null;
+            showLoginPage();
+            return;
+        }
+
+        currentUser = session.user;
+
     } catch (error) {
-        console.error('Authentication check failed:', error);
-        showLoginPage('Unable to verify login. Please refresh.');
+        console.error(
+            'Authentication check failed:',
+            error
+        );
+
+        showLoginPage(
+            'Unable to verify login. Please refresh.'
+        );
+
         return;
     }
-    try { await init(); }
-    catch (error) { console.error('Woi initialization failed:', error); alert('Woi initialization failed: ' + error.message); }
+
+    try {
+        await init();
+    } catch (error) {
+        console.error(
+            'Woi initialization failed:',
+            error
+        );
+
+        alert(
+            'Woi initialization failed: ' +
+            error.message
+        );
+    }
 }
 
 
