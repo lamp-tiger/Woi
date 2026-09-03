@@ -12,33 +12,6 @@
         .nav button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; background: white; transition: 0.3s; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .nav button.active { background: var(--primary); color: white; }
         .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 15px; }
-        .study-timer {
-    background: white;
-    border-radius: 12px;
-    padding: 12px 16px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-#study-timer-label {
-    font-size: 13px;
-    color: #888;
-    margin-right: 12px;
-}
-
-#study-timer-display {
-    font-size: 22px;
-    font-variant-numeric: tabular-nums;
-}
-
-#study-timer-button {
-    min-width: 100px;
-}
         .stats-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
         .stat-box { background: white; padding: 10px; border-radius: 8px; text-align: center; flex: 1; margin: 0 5px; border-bottom: 3px solid #ddd; }
         .stat-box b { color: var(--accent); font-size: 18px; }
@@ -153,39 +126,72 @@
         .btn-secondary { background: #34495e; color: white; }
         
         /* 语言切换样式 */
-        .lang-switcher { 
-            padding: 8px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-            text-align: center; 
-            border-radius: 8px; 
-            margin-bottom: 12px;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-        .lang-switcher span { 
-            color: white; 
-            font-weight: bold; 
-            margin-right: 10px;
-            font-size: 12px;
-        }
-        .lang-btn { 
-    padding: 5px 15px;         /* 从 10px 25px 改为 5px 15px */
-    margin: 0 4px;             /* 从 0 8px 改为 0 4px */
-    border: 1.5px solid white; /* 边框稍微变细一点 */
-    background: transparent; 
-    color: white; 
-    border-radius: 15px;       /* 从 25px 改为 15px */
-    cursor: pointer; 
-    font-weight: bold;
-    transition: all 0.3s;
-    font-size: 12px;           /* 从 14px 改为 12px */
+        /* 顶部语言 + 计时器 */
+.lang-switcher {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 6px 10px;
+    margin-bottom: 10px;
+
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 8px;
+
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
 }
-        .lang-btn:hover { 
-            background: rgba(255,255,255,0.2); 
-        }
-        .lang-btn.active { 
-            background: white; 
-            color: #667eea; 
-        }
+
+.lang-left {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.lang-btn {
+    padding: 4px 10px;
+
+    border: 1px solid rgba(255,255,255,0.8);
+    background: transparent;
+    color: white;
+
+    border-radius: 12px;
+
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.lang-btn:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.lang-btn.active {
+    background: white;
+    color: #667eea;
+}
+
+
+/* 右侧迷你计时器 */
+.study-timer-mini {
+    min-width: 42px;
+    padding: 4px 8px;
+
+    border: none;
+    background: transparent;
+    color: white;
+
+    font-size: 15px;
+    font-weight: bold;
+
+    cursor: pointer;
+
+    font-variant-numeric: tabular-nums;
+}
+
+.study-timer-mini:hover {
+    background: rgba(255,255,255,0.15);
+    border-radius: 10px;
+}
         
         /* 确认对话框样式 */
         .confirm-modal {
@@ -313,30 +319,60 @@ SUPABASE 数据库表结构说明
 ===============================================
 -->
 
-<!-- 语言切换器 -->
+<!-- 顶部：语言切换 + 学习计时 -->
 <div class="lang-switcher">
-    <span id="lang-label">开始学习：</span>
-    <button class="lang-btn" id="btn-en" onclick="switchLang('en')">English</button>
-    <button class="lang-btn" id="btn-ja" onclick="switchLang('ja')">日本語</button>
+
+    <div class="lang-left">
+        <button class="lang-btn" id="btn-en" onclick="switchLang('en')">En</button>
+        <button class="lang-btn" id="btn-ja" onclick="switchLang('ja')">日</button>
+    </div>
+
+    <button
+        id="study-timer-button"
+        class="study-timer-mini"
+        onclick="toggleStudyTimer()">
+        ▶
+    </button>
+
 </div>
 
 <div class="container">
 
-    <!-- 学习计时器 -->
-    <div class="study-timer">
-        <div>
-            <span id="study-timer-label">⏱ Study Time</span>
-            <strong id="study-timer-display">00:00:00</strong>
+    
+<!-- 学习时间统计 -->
+<div class="study-history-card">
+
+    <div class="study-summary">
+
+        <div class="study-summary-item">
+            <span>Today</span>
+            <strong id="study-today">0m</strong>
         </div>
 
-        <button
-            id="study-timer-button"
-            onclick="toggleStudyTimer()"
-            class="btn-action btn-primary">
-            ▶ Start
-        </button>
+        <div class="study-summary-item">
+            <span>7 Days</span>
+            <strong id="study-7days">0m</strong>
+        </div>
+
+        <div class="study-summary-item">
+            <span>30 Days</span>
+            <strong id="study-30days">0m</strong>
+        </div>
+
+        <div class="study-summary-item">
+            <span>Total</span>
+            <strong id="study-total">0m</strong>
+        </div>
+
     </div>
 
+    <div class="study-history-header">
+        <strong>📊 Study History</strong>
+    </div>
+
+    <div id="study-history-list"></div>
+
+</div>
     <div class="nav">
         <button id="nav-learn" class="active" onclick="showPanel('learn')">📖 <span class="nav-text-learn">背诵模式</span></button>
         <button id="nav-sentences" onclick="showPanel('sentences')">📜 <span class="nav-text-sentences">刷句子</span></button>
@@ -1026,65 +1062,94 @@ let studyTimerInterval = null;
 
 // 秒数 → 00:00:00
 function formatStudyTime(totalSeconds) {
-    totalSeconds = Math.max(0, Math.floor(totalSeconds));
 
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    totalSeconds = Math.max(
+        0,
+        Math.floor(totalSeconds)
+    );
 
-    return [
-        String(hours).padStart(2, '0'),
-        String(minutes).padStart(2, '0'),
-        String(seconds).padStart(2, '0')
-    ].join(':');
+    // 不满 1 分钟：秒
+    if (totalSeconds < 60) {
+        return `${totalSeconds}s`;
+    }
+
+    // 不满 1 小时：分钟
+    if (totalSeconds < 3600) {
+        const minutes =
+            Math.floor(totalSeconds / 60);
+
+        return `${minutes}m`;
+    }
+
+    // 满 1 小时：小时 + 分钟
+    const hours =
+        Math.floor(totalSeconds / 3600);
+
+    const minutes =
+        Math.floor(
+            (totalSeconds % 3600) / 60
+        );
+
+    return `${hours}h${minutes}m`;
 }
-
 
 // 更新计时器画面
 function updateStudyTimerDisplay() {
-    const display = document.getElementById('study-timer-display');
 
-    if (!display || !activeStudySession) return;
+    const button =
+        document.getElementById('study-timer-button');
 
-    const start = new Date(activeStudySession.start_time).getTime();
-    const elapsed = Math.floor((Date.now() - start) / 1000);
+    if (!button || !activeStudySession) {
+        return;
+    }
 
-    display.textContent = formatStudyTime(elapsed);
+    const start =
+        new Date(activeStudySession.start_time).getTime();
+
+    const elapsed =
+        Math.floor(
+            (Date.now() - start) / 1000
+        );
+
+    button.textContent =
+        formatStudyTime(elapsed);
 }
 
 
 // 根据当前状态更新按钮
 function renderStudyTimer() {
-    const display = document.getElementById('study-timer-display');
-    const button = document.getElementById('study-timer-button');
 
-    if (!display || !button) return;
+    const button =
+        document.getElementById('study-timer-button');
+
+    if (!button) return;
+
 
     if (studyTimerInterval) {
+
         clearInterval(studyTimerInterval);
+
         studyTimerInterval = null;
     }
 
+
+    // 正在学习
     if (activeStudySession) {
 
         updateStudyTimerDisplay();
 
-        button.textContent = '■ Stop';
-        button.classList.remove('btn-primary');
-        button.classList.add('btn-danger');
+        studyTimerInterval =
+            setInterval(
+                updateStudyTimerDisplay,
+                1000
+            );
 
-        studyTimerInterval = setInterval(
-            updateStudyTimerDisplay,
-            1000
-        );
+    }
 
-    } else {
+    // 没有计时
+    else {
 
-        display.textContent = '00:00:00';
-
-        button.textContent = '▶ Start';
-        button.classList.remove('btn-danger');
-        button.classList.add('btn-primary');
+        button.textContent = '▶';
     }
 }
 
