@@ -673,6 +673,31 @@
     color: inherit;
 }
 
+.study-duration-picker {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    width: 100%;
+}
+
+.study-duration-picker select {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 7px 9px;
+
+    border: 1px solid #dfe4e7;
+    border-radius: 7px;
+
+    background: white;
+
+    font-family: inherit;
+    font-size: 13px;
+    color: inherit;
+
+    cursor: pointer;
+}
+
 .study-add-save {
     font-family: inherit;
 }
@@ -1174,14 +1199,39 @@ SUPABASE 数据库表结构说明
                 </select>
 
                 <div class="study-add-field">
+
                     <label id="study-add-duration-label">
                         Duration
                     </label>
-                    <input
-                        id="study-add-duration"
-                        type="text"
-                        placeholder="0h50m"
-                        autocomplete="off">
+
+                    <div class="study-duration-picker">
+
+                        <select id="study-add-hours">
+                            <option value="0">0 h</option>
+                            <option value="1">1 h</option>
+                            <option value="2">2 h</option>
+                            <option value="3">3 h</option>
+                            <option value="4">4 h</option>
+                            <option value="5">5 h</option>
+                        </select>
+
+                        <select id="study-add-minutes">
+                            <option value="0">0 min</option>
+                            <option value="5">5 min</option>
+                            <option value="10">10 min</option>
+                            <option value="15">15 min</option>
+                            <option value="20">20 min</option>
+                            <option value="25">25 min</option>
+                            <option value="30">30 min</option>
+                            <option value="35">35 min</option>
+                            <option value="40">40 min</option>
+                            <option value="45">45 min</option>
+                            <option value="50">50 min</option>
+                            <option value="55">55 min</option>
+                        </select>
+
+                    </div>
+
                 </div>
 
                 <div class="study-add-field">
@@ -4181,14 +4231,14 @@ function openStudyAddModal() {
     ).value = currentTime;
 
     document.getElementById(
-        'study-add-duration'
-    ).value = '';
-
-    modal.classList.remove('hidden');
+        'study-add-hours'
+    ).value = '0';
 
     document.getElementById(
-        'study-add-duration'
-    ).focus();
+        'study-add-minutes'
+    ).value = '30';
+
+    modal.classList.remove('hidden');
 }
 
 
@@ -4212,33 +4262,27 @@ async function saveManualStudySession() {
             'study-add-lang'
         ).value;
 
-    const durationText =
-        document.getElementById(
-            'study-add-duration'
-        ).value.trim();
-
     const endText =
         document.getElementById(
             'study-add-end'
         ).value;
 
-    const match =
-        durationText.match(
-            /^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?$/i
+    const hours =
+        Number(
+            document.getElementById(
+                'study-add-hours'
+            ).value
         );
 
-    if (!match || (!match[1] && !match[2])) {
-        alert(
-            currentLang === 'ja'
-                ? '0h50m の形式で入力してください'
-                : 'Enter duration like 0h50m'
+    const minutes =
+        Number(
+            document.getElementById(
+                'study-add-minutes'
+            ).value
         );
-        return;
-    }
 
-    const hours = Number(match[1] || 0);
-    const minutes = Number(match[2] || 0);
-    const durationSeconds = (hours * 60 + minutes) * 60;
+    const durationSeconds =
+        (hours * 60 + minutes) * 60;
 
     if (durationSeconds <= 0) {
         alert(
