@@ -2784,9 +2784,52 @@ function renderStudyChart() {
         );
 
 
-        chart.appendChild(column);
+                chart.appendChild(column);
     });
 }
+
+
+// 点击图表某一天后，显示当天详情
+function showStudyChartDetail(day) {
+
+    const detail =
+        document.getElementById('study-chart-detail');
+
+    if (!detail) return;
+
+
+    const locale =
+        currentLang === 'ja'
+            ? 'ja-JP'
+            : 'en-US';
+
+    const dateText =
+        day.date.toLocaleDateString(
+            locale,
+            {
+                month: 'short',
+                day: 'numeric',
+                weekday: 'short'
+            }
+        );
+
+    const total =
+        formatAnalyticsTime(day.seconds);
+
+    const count =
+        day.sessions.length;
+
+
+    detail.innerHTML =
+        `<b>${dateText}</b> · ${total} · ` +
+        (
+            currentLang === 'ja'
+                ? `${count}回`
+                : `${count} ${count === 1 ? 'session' : 'sessions'}`
+        );
+}
+
+
 function setupStudyAnalyticsControls() {
 
     document
@@ -2861,7 +2904,202 @@ function setupStudyAnalyticsControls() {
             );
         });
 }
+// 渲染学习历史记录
+function renderStudyHistory() {
 
+    const list =
+        document.getElementById('study-history-list');
+
+    if (!list) return;
+
+
+    // 只显示已经结束的学习记录
+    const sessions =
+        studyHistory
+            .filter(session =>
+                session.end_time &&
+                Number(session.duration_seconds) >= 0
+            )
+            .slice()
+            .sort(
+                (a, b) =>
+                    new Date(b.start_time) -
+                    new Date(a.start_time)
+            );
+
+
+    // 没有记录
+    if (sessions.length === 0) {
+
+        list.innerHTML =
+            `<div class="study-empty">${
+                currentLang === 'ja'
+                    ? '学習記録はまだありません'
+                    : 'No study records yet'
+            }</div>`;
+
+        return;
+    }
+
+
+    // 按“开始学习的本地日期”分组
+    const groups = new Map();
+
+    sessions.forEach(session => {
+
+        const date =
+            new Date(session.start_time);
+
+        const key =
+            `${date.getFullYear()}-` +
+            `${String(date.getMonth() + 1).padStart(2, '0')}-` +
+            `${String(date.getDate()).padStart(2, '0')}`;
+
+
+        if (!groups.has(key)) {
+            groups.set(key, []);
+        }
+
+        groups.get(key).push(session);
+    });
+
+
+    list.innerHTML = '';
+
+
+    groups.forEach((daySessions, key) => {
+
+        const day =
+            document.createElement('div');
+
+        day.className = 'study-day';
+
+
+        // 日期
+        const firstDate =
+            new Date(daySessions[0].start_time);
+
+        const dateText =
+            firstDate.toLocaleDateString(
+                currentLang === 'ja'
+                    ? 'ja-JP'
+                    : 'en-US',
+                {
+                    month: 'short',
+                    day: 'numeric',
+                    weekday: 'short'
+                }
+            );
+
+
+        // 当天总学习时间
+        const daySeconds =
+            sumStudySeconds(daySessions);
+
+
+        const head =
+            document.createElement('div');
+
+        head.className = 'study-day-head';
+
+        head.innerHTML =
+            `<span>${dateText}</span>` +
+            `<span>${formatAnalyticsTime(daySeconds)}</span>`;
+
+        day.appendChild(head);
+
+
+        // 当天每一条学习记录
+        daySessions.forEach(session => {
+
+            const start =
+                new Date(session.start_time);
+
+            const end =
+                new Date(session.end_time);
+
+
+            const formatClock = date =>
+                `${String(date.getHours()).padStart(2, '0')}:` +
+                `${String(date.getMinutes()).padStart(2, '0')}`;
+
+
+            const row =
+                document.createElement('div');
+
+            row.className = 'study-session-row';
+
+
+            // 语言
+            const lang =
+                document.createElement('span');
+
+            lang.className = 'study-session-lang';
+
+            lang.textContent =
+                session.lang === 'ja'
+                    ? '日'
+                    : 'En';
+
+
+            // 开始时间 - 结束时间
+            const time =
+                document.createElement('span');
+
+            time.className = 'study-session-time';
+
+            time.textContent =
+                `${formatClock(start)} – ${formatClock(end)}`;
+
+
+            // 本次学习时长
+            const duration =
+                document.createElement('span');
+
+            duration.className =
+                'study-session-duration';
+
+            duration.textContent =
+                formatAnalyticsTime(
+                    Number(session.duration_seconds) || 0
+                );
+
+
+            // 删除按钮
+            const deleteButton =
+                document.createElement('button');
+
+            deleteButton.type = 'button';
+
+            deleteButton.className =
+                'study-session-delete';
+
+            deleteButton.textContent = '×';
+
+            deleteButton.title =
+                currentLang === 'ja'
+                    ? '削除'
+                    : 'Delete';
+
+            deleteButton.addEventListener(
+                'click',
+                () =>
+                    deleteStudySession(session.id)
+            );
+
+
+            row.appendChild(lang);
+            row.appendChild(time);
+            row.appendChild(duration);
+            row.appendChild(deleteButton);
+
+            day.appendChild(row);
+        });
+
+
+        list.appendChild(day);
+    });
+}
 async function deleteStudySession(id) {
 
     const message =
