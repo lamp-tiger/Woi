@@ -95,11 +95,31 @@ async function getCurrentUser(request, env) {
   return user;
 }
 
+function unauthorized() {
+  return Response.json(
+    {
+      ok: false,
+      authenticated: false,
+      error: "Unauthorized"
+    },
+    { status: 401 }
+  );
+}
+
+function getVocabTable(lang) {
+  if (lang === "en") return "vocab_words";
+  if (lang === "ja") return "vocab_gois";
+  return null;
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Worker 测试
+    // -----------------------------
+    // 基础测试
+    // -----------------------------
+
     if (url.pathname === "/api/test") {
       return Response.json({
         ok: true,
@@ -107,7 +127,6 @@ export default {
       });
     }
 
-    // D1 测试
     if (url.pathname === "/api/db-test") {
       try {
         const result = await env.DB
@@ -121,13 +140,19 @@ export default {
         });
       } catch (error) {
         return Response.json(
-          { ok: false, error: error.message },
+          {
+            ok: false,
+            error: error.message
+          },
           { status: 500 }
         );
       }
     }
 
+    // -----------------------------
     // 管理员创建用户
+    // -----------------------------
+
     if (
       url.pathname === "/api/admin/create-user" &&
       request.method === "POST"
@@ -141,7 +166,10 @@ export default {
           adminSecret !== env.ADMIN_SECRET
         ) {
           return Response.json(
-            { ok: false, error: "Unauthorized" },
+            {
+              ok: false,
+              error: "Unauthorized"
+            },
             { status: 401 }
           );
         }
@@ -234,7 +262,10 @@ export default {
       }
     }
 
+    // -----------------------------
     // 登录
+    // -----------------------------
+
     if (
       url.pathname === "/api/login" &&
       request.method === "POST"
@@ -287,9 +318,6 @@ export default {
           );
         }
 
-        // 每次登录生成一个全新的 session。
-        // 数据库只保存最新 session 的 hash，
-        // 所以上一台设备的 session 会自动失效。
         const token = randomToken();
         const tokenHash = await sha256(token);
 
@@ -339,7 +367,10 @@ export default {
       }
     }
 
-    // 查询“我是谁”
+    // -----------------------------
+    // 当前登录用户
+    // -----------------------------
+
     if (
       url.pathname === "/api/me" &&
       request.method === "GET"
@@ -349,13 +380,7 @@ export default {
           await getCurrentUser(request, env);
 
         if (!user) {
-          return Response.json(
-            {
-              ok: false,
-              authenticated: false
-            },
-            { status: 401 }
-          );
+          return unauthorized();
         }
 
         return Response.json({
@@ -378,7 +403,10 @@ export default {
       }
     }
 
+    // -----------------------------
     // 退出登录
+    // -----------------------------
+
     if (
       url.pathname === "/api/logout" &&
       request.method === "POST"
@@ -424,6 +452,421 @@ export default {
         );
       }
     }
+
+    // =========================================================
+    // D1 词库 API
+    // =========================================================
+
+    // -----------------------------
+    // 获取当前用户词库
+    //
+    // GET /api/vocab?lang=en
+    // GET /api/vocab?lang=ja
+    // -----------------------------
+
+    if (
+      url.pathname === "/api/vocab" &&
+      request.method === "GET"
+    ) {
+      try {
+        const user =
+          await getCurrentUser(request, env);
+
+        if (!user) {
+          return unauthorized();
+        }
+
+        const lang =
+          String(url.searchParams.get("lang") || "");
+
+        const table =
+          getVocabTable(lang);
+
+        if (!table) {
+          return Response.json(
+            {
+              ok: false,
+              error: "Invalid language"
+            },
+            { status: 400 }
+          );
+        }
+
+        const result = await env.DB.prepare(`
+          SELECT
+            id,
+            word,
+            orig_jp,
+            gen_jp,
+            orig_cn,
+            gen_cn,
+            status,
+            next_time,
+            review_count,
+            deleted
+          FROM ${table}
+          WHERE user_id = ?
+            AND deleted = 0
+        `)
+          .bind(user.id)
+          .all();
+
+        return Response.json({
+          ok: true,
+          words: result.results || []
+        });
+
+      } catch (error) {
+        console.error(
+          "Load vocab failed:",
+          error
+        );
+
+        return Response.json(
+          {
+            ok: false,
+            error: "Failed to load vocabulary"
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // -----------------------------
+    // 新增 / 更新单词
+    //
+    // POST /api/vocab
+    // -----------------------------
+
+    if (
+      url.pathname === "/api/vocab" &&
+      request.method === "POST"
+    ) {
+      try {
+        const user =
+          await getCurrentUser(request, env);
+
+        if (!user) {
+          return unauthorized();
+        }
+
+        const body =
+          await request.json();
+
+        const lang =
+          String(body.lang || "");
+
+        const table =
+          getVocabTable(lang);
+
+        if (!table) {
+          return Response.json(
+            {
+              ok: false,
+              error: "Invalid language"
+            },
+            { status: 400 }
+          );
+        }
+
+        const id =
+          String(body.id || "").trim();
+
+        const word =
+          String(body.word || "").trim();
+
+        if (!id || !word) {
+          return Response.json(
+            {
+              ok: false,
+              error: "id and word are required"
+            },
+            { status: 400 }
+          );
+        }
+
+        const origJp =
+          body.orig_jp == null
+            ? null
+            : String(body.orig_jp);
+
+        const genJp =
+          body.gen_jp == null
+            ? null
+            : String(body.gen_jp);
+
+        const origCn =
+          body.orig_cn == null
+            ? null
+            : String(body.orig_cn);
+
+        const genCn =
+          body.gen_cn == null
+            ? null
+            : String(body.gen_cn);
+
+        const status =
+          String(body.status || "new");
+
+        const nextTime =
+          body.next_time
+            ? String(body.next_time)
+            : new Date().toISOString();
+
+        const reviewCount =
+          Number.isFinite(Number(body.review_count))
+            ? Math.max(
+                0,
+                Math.trunc(Number(body.review_count))
+              )
+            : 0;
+
+        const deleted =
+          body.deleted ? 1 : 0;
+
+        // 先检查这个 ID 是否已经属于其他用户。
+        // 防止用户通过伪造 UUID 覆盖别人的数据。
+        const existing =
+          await env.DB.prepare(`
+            SELECT user_id
+            FROM ${table}
+            WHERE id = ?
+          `)
+            .bind(id)
+            .first();
+
+        if (
+          existing &&
+          Number(existing.user_id) !== Number(user.id)
+        ) {
+          return Response.json(
+            {
+              ok: false,
+              error: "Forbidden"
+            },
+            { status: 403 }
+          );
+        }
+
+        await env.DB.prepare(`
+          INSERT INTO ${table} (
+            id,
+            user_id,
+            word,
+            orig_jp,
+            gen_jp,
+            orig_cn,
+            gen_cn,
+            status,
+            next_time,
+            review_count,
+            deleted
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+
+          ON CONFLICT(id) DO UPDATE SET
+            word = excluded.word,
+            orig_jp = excluded.orig_jp,
+            gen_jp = excluded.gen_jp,
+            orig_cn = excluded.orig_cn,
+            gen_cn = excluded.gen_cn,
+            status = excluded.status,
+            next_time = excluded.next_time,
+            review_count = excluded.review_count,
+            deleted = excluded.deleted
+        `)
+          .bind(
+            id,
+            user.id,
+            word,
+            origJp,
+            genJp,
+            origCn,
+            genCn,
+            status,
+            nextTime,
+            reviewCount,
+            deleted
+          )
+          .run();
+
+        return Response.json({
+          ok: true,
+          id
+        });
+
+      } catch (error) {
+        console.error(
+          "Save vocab failed:",
+          error
+        );
+
+        return Response.json(
+          {
+            ok: false,
+            error: "Failed to save vocabulary"
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // -----------------------------
+    // 软删除单词
+    //
+    // DELETE /api/vocab/:id?lang=en
+    // DELETE /api/vocab/:id?lang=ja
+    // -----------------------------
+
+    if (
+      url.pathname.startsWith("/api/vocab/") &&
+      request.method === "DELETE"
+    ) {
+      try {
+        const user =
+          await getCurrentUser(request, env);
+
+        if (!user) {
+          return unauthorized();
+        }
+
+        const lang =
+          String(url.searchParams.get("lang") || "");
+
+        const table =
+          getVocabTable(lang);
+
+        if (!table) {
+          return Response.json(
+            {
+              ok: false,
+              error: "Invalid language"
+            },
+            { status: 400 }
+          );
+        }
+
+        const id =
+          decodeURIComponent(
+            url.pathname.slice("/api/vocab/".length)
+          );
+
+        if (!id) {
+          return Response.json(
+            {
+              ok: false,
+              error: "Missing vocabulary id"
+            },
+            { status: 400 }
+          );
+        }
+
+        const result =
+          await env.DB.prepare(`
+            UPDATE ${table}
+            SET deleted = 1
+            WHERE id = ?
+              AND user_id = ?
+          `)
+            .bind(
+              id,
+              user.id
+            )
+            .run();
+
+        return Response.json({
+          ok: true,
+          id,
+          changed:
+            result.meta?.changes || 0
+        });
+
+      } catch (error) {
+        console.error(
+          "Delete vocab failed:",
+          error
+        );
+
+        return Response.json(
+          {
+            ok: false,
+            error: "Failed to delete vocabulary"
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // -----------------------------
+    // 清空当前语言词库
+    //
+    // DELETE /api/vocab?lang=en
+    // DELETE /api/vocab?lang=ja
+    // -----------------------------
+
+    if (
+      url.pathname === "/api/vocab" &&
+      request.method === "DELETE"
+    ) {
+      try {
+        const user =
+          await getCurrentUser(request, env);
+
+        if (!user) {
+          return unauthorized();
+        }
+
+        const lang =
+          String(url.searchParams.get("lang") || "");
+
+        const table =
+          getVocabTable(lang);
+
+        if (!table) {
+          return Response.json(
+            {
+              ok: false,
+              error: "Invalid language"
+            },
+            { status: 400 }
+          );
+        }
+
+        const result =
+          await env.DB.prepare(`
+            UPDATE ${table}
+            SET deleted = 1
+            WHERE user_id = ?
+              AND deleted = 0
+          `)
+            .bind(user.id)
+            .run();
+
+        return Response.json({
+          ok: true,
+          changed:
+            result.meta?.changes || 0
+        });
+
+      } catch (error) {
+        console.error(
+          "Clear vocab failed:",
+          error
+        );
+
+        return Response.json(
+          {
+            ok: false,
+            error: "Failed to clear vocabulary"
+          },
+          { status: 500 }
+        );
+      }
+    }
+
+    // -----------------------------
+    // 其他请求继续返回静态网站
+    // -----------------------------
 
     return env.ASSETS.fetch(request);
   }
