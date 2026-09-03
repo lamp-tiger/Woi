@@ -793,6 +793,14 @@
         margin-top: 0;
     }
 }
+.home-icon {
+    width: 21px;
+    height: 21px;
+
+    display: block;
+
+    fill: #111;
+}
     </style>
 </head>
 <body>
@@ -1745,9 +1753,15 @@ function renderStudyTimer() {
     if (!button) return;
     // 分析页右上角始终显示 Home
     if (studyAnalyticsOpen) {
-        button.textContent = '⌂';
-        return;
-    }
+    button.innerHTML = `
+    <svg class="home-icon"
+         viewBox="0 0 24 24"
+         aria-hidden="true">
+        <path d="M12 3L3 10.5V21H9V14H15V21H21V10.5L12 3Z"/>
+    </svg>
+`;
+    return;
+}
 
 
     if (studyTimerInterval) {
@@ -1943,7 +1957,14 @@ function openStudyAnalytics() {
         document.getElementById('study-timer-button');
 
     if (button) {
-        button.textContent = '⌂';
+        button.innerHTML = `
+        <svg class="home-icon"
+             viewBox="0 0 24 24"
+             aria-hidden="true">
+            <path d="M12 3L3 10.5V21H9V14H15V21H21V10.5L12 3Z"/>
+        </svg>
+    `;
+
 
         button.setAttribute(
             'aria-label',
@@ -1952,6 +1973,8 @@ function openStudyAnalytics() {
                 : 'Back to home'
         );
     }
+
+loadStudyHistory();
 }
 
 
@@ -2170,6 +2193,292 @@ function setupStudyTimerGestures() {
                 }, 260);
         }
     );
+}
+    // ============================================================
+// Study Analytics Data
+// ============================================================
+
+let studyHistory = [];
+
+
+// 获取历史记录
+async function loadStudyHistory() {
+
+    try {
+
+        const response = await fetch('/api/study/history');
+
+        if (!response.ok) {
+            throw new Error('Failed to load study history');
+        }
+
+        const data = await response.json();
+
+        studyHistory = Array.isArray(data.sessions)
+            ? data.sessions
+            : [];
+
+        renderStudyAnalytics();
+
+    } catch (error) {
+
+        console.error('Load study history failed:', error);
+
+        studyHistory = [];
+        renderStudyAnalytics();
+    }
+}
+
+
+// 判断两个时间是不是本地同一天
+function isSameLocalDay(a, b) {
+
+    return (
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate()
+    );
+}
+
+
+// 某条记录是否位于最近 N 个自然日
+function isWithinLastDays(session, days) {
+
+    const start = new Date(session.start_time);
+    const now = new Date();
+
+    const boundary = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate()
+    );
+
+    boundary.setDate(
+        boundary.getDate() - (days - 1)
+    );
+
+    return start >= boundary;
+}
+
+
+// 求一组记录的总秒数
+function sumStudySeconds(sessions) {
+
+    return sessions.reduce(
+        (total, session) =>
+            total + Math.max(
+                0,
+                Number(session.duration_seconds) || 0
+            ),
+        0
+    );
+}
+
+
+// 分析页使用的时间格式
+function formatAnalyticsTime(seconds) {
+
+    seconds = Math.max(
+        0,
+        Math.floor(Number(seconds) || 0)
+    );
+
+    if (seconds < 60) {
+        return `${seconds}s`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+
+    if (minutes < 60) {
+        return `${minutes}m`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainMinutes = minutes % 60;
+
+    return `${hours}h ${remainMinutes}m`;
+}
+
+
+// 渲染 Today / 7D / 30D / Total
+function renderStudyAnalytics() {
+
+    const now = new Date();
+
+    const todaySessions =
+        studyHistory.filter(session =>
+            isSameLocalDay(
+                new Date(session.start_time),
+                now
+            )
+        );
+
+    const sevenDaySessions =
+        studyHistory.filter(session =>
+            isWithinLastDays(session, 7)
+        );
+
+    const thirtyDaySessions =
+        studyHistory.filter(session =>
+            isWithinLastDays(session, 30)
+        );
+
+
+    const todaySeconds =
+        sumStudySeconds(todaySessions);
+
+    const sevenSeconds =
+        sumStudySeconds(sevenDaySessions);
+
+    const thirtySeconds =
+        sumStudySeconds(thirtyDaySessions);
+
+    const totalSeconds =
+        sumStudySeconds(studyHistory);
+
+
+    // ---------- 四个主要数字 ----------
+
+    const todayEl =
+        document.getElementById('study-today');
+
+    const sevenEl =
+        document.getElementById('study-7days');
+
+    const thirtyEl =
+        document.getElementById('study-30days');
+
+    const totalEl =
+        document.getElementById('study-total');
+
+
+    if (todayEl) {
+        todayEl.textContent =
+            formatAnalyticsTime(todaySeconds);
+    }
+
+    if (sevenEl) {
+        sevenEl.textContent =
+            formatAnalyticsTime(sevenSeconds);
+    }
+
+    if (thirtyEl) {
+        thirtyEl.textContent =
+            formatAnalyticsTime(thirtySeconds);
+    }
+
+    if (totalEl) {
+        totalEl.textContent =
+            formatAnalyticsTime(totalSeconds);
+    }
+
+
+    // ---------- 日均 ----------
+
+    const sevenAvg =
+        Math.floor(sevenSeconds / 7);
+
+    const thirtyAvg =
+        Math.floor(thirtySeconds / 30);
+
+
+    const sevenAvgEl =
+        document.getElementById('study-7avg');
+
+    const thirtyAvgEl =
+        document.getElementById('study-30avg');
+
+
+    if (sevenAvgEl) {
+        sevenAvgEl.textContent =
+            `${formatAnalyticsTime(sevenAvg)}/day`;
+    }
+
+    if (thirtyAvgEl) {
+        thirtyAvgEl.textContent =
+            `${formatAnalyticsTime(thirtyAvg)}/day`;
+    }
+
+
+    // ---------- 总 Session 数 ----------
+
+    const countEl =
+        document.getElementById('study-session-count');
+
+    if (countEl) {
+
+        countEl.textContent =
+            currentLang === 'ja'
+                ? `${studyHistory.length} 回`
+                : `${studyHistory.length} sessions`;
+    }
+
+
+    // ---------- Today 文案 ----------
+
+    const todayNote =
+        document.getElementById(
+            'analytics-today-note'
+        );
+
+    if (todayNote) {
+
+        if (todaySeconds === 0) {
+
+            todayNote.textContent =
+                currentLang === 'ja'
+                    ? '今日はまだ学習していません'
+                    : 'No study time today';
+
+        } else {
+
+            todayNote.textContent =
+                currentLang === 'ja'
+                    ? `今日 ${formatAnalyticsTime(todaySeconds)} 学習`
+                    : `${formatAnalyticsTime(todaySeconds)} studied today`;
+        }
+    }
+
+
+    // ---------- 7日平均 ----------
+
+    const averageNote =
+        document.getElementById(
+            'analytics-average-note'
+        );
+
+    if (averageNote) {
+
+        averageNote.textContent =
+            currentLang === 'ja'
+                ? `7日間平均：${formatAnalyticsTime(sevenAvg)} / 日`
+                : `7-day average: ${formatAnalyticsTime(sevenAvg)}/day`;
+    }
+
+
+    // ---------- 环形进度 ----------
+
+    // 暂时把“7日平均”作为今天的比较基准。
+    // 达到平均值 = 一整圈。
+
+    let ratio = 0;
+
+    if (sevenAvg > 0) {
+        ratio = Math.min(
+            todaySeconds / sevenAvg,
+            1
+        );
+    }
+
+    const ring =
+        document.getElementById('today-ring');
+
+    if (ring) {
+        ring.style.setProperty(
+            '--ring',
+            `${ratio * 360}deg`
+        );
+    }
 }
     // --- 初始化 ---
     async function init() {
