@@ -12,6 +12,33 @@
         .nav button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; background: white; transition: 0.3s; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .nav button.active { background: var(--primary); color: white; }
         .card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-bottom: 15px; }
+        .study-timer {
+    background: white;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+#study-timer-label {
+    font-size: 13px;
+    color: #888;
+    margin-right: 12px;
+}
+
+#study-timer-display {
+    font-size: 22px;
+    font-variant-numeric: tabular-nums;
+}
+
+#study-timer-button {
+    min-width: 100px;
+}
         .stats-bar { display: flex; justify-content: space-between; margin-bottom: 15px; }
         .stat-box { background: white; padding: 10px; border-radius: 8px; text-align: center; flex: 1; margin: 0 5px; border-bottom: 3px solid #ddd; }
         .stat-box b { color: var(--accent); font-size: 18px; }
@@ -294,6 +321,22 @@ SUPABASE 数据库表结构说明
 </div>
 
 <div class="container">
+
+    <!-- 学习计时器 -->
+    <div class="study-timer">
+        <div>
+            <span id="study-timer-label">⏱ Study Time</span>
+            <strong id="study-timer-display">00:00:00</strong>
+        </div>
+
+        <button
+            id="study-timer-button"
+            onclick="toggleStudyTimer()"
+            class="btn-action btn-primary">
+            ▶ Start
+        </button>
+    </div>
+
     <div class="nav">
         <button id="nav-learn" class="active" onclick="showPanel('learn')">📖 <span class="nav-text-learn">背诵模式</span></button>
         <button id="nav-sentences" onclick="showPanel('sentences')">📜 <span class="nav-text-sentences">刷句子</span></button>
@@ -940,7 +983,177 @@ async function syncWordToCloud(wordObj) {
         } catch(e) { console.error("保存提示词失败:", e); alert("保存失败: " + e.message); }
     }
 
+// ============================================================
+// 学习计时器
+// ============================================================
 
+let activeStudySession = null;
+let studyTimerInterval = null;
+
+
+// 秒数 → 00:00:00
+function formatStudyTime(totalSeconds) {
+    totalSeconds = Math.max(0, Math.floor(totalSeconds));
+
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return [
+        String(hours).padStart(2, '0'),
+        String(minutes).padStart(2, '0'),
+        String(seconds).padStart(2, '0')
+    ].join(':');
+}
+
+
+// 更新计时器画面
+function updateStudyTimerDisplay() {
+    const display = document.getElementById('study-timer-display');
+
+    if (!display || !activeStudySession) return;
+
+    const start = new Date(activeStudySession.start_time).getTime();
+    const elapsed = Math.floor((Date.now() - start) / 1000);
+
+    display.textContent = formatStudyTime(elapsed);
+}
+
+
+// 根据当前状态更新按钮
+function renderStudyTimer() {
+    const display = document.getElementById('study-timer-display');
+    const button = document.getElementById('study-timer-button');
+
+    if (!display || !button) return;
+
+    if (studyTimerInterval) {
+        clearInterval(studyTimerInterval);
+        studyTimerInterval = null;
+    }
+
+    if (activeStudySession) {
+
+        updateStudyTimerDisplay();
+
+        button.textContent = '■ Stop';
+        button.classList.remove('btn-primary');
+        button.classList.add('btn-danger');
+
+        studyTimerInterval = setInterval(
+            updateStudyTimerDisplay,
+            1000
+        );
+
+    } else {
+
+        display.textContent = '00:00:00';
+
+        button.textContent = '▶ Start';
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-primary');
+    }
+}
+
+
+// 页面打开时查询有没有正在计时
+async function loadActiveStudySession() {
+    try {
+
+        const r = await fetch('/api/study/active', {
+            credentials: 'same-origin'
+        });
+
+        if (!r.ok) {
+            throw new Error(await r.text());
+        }
+
+        const result = await r.json();
+
+        activeStudySession = result.session || null;
+
+        renderStudyTimer();
+
+    } catch (e) {
+        console.error('加载学习计时器失败:', e);
+    }
+}
+
+
+// 开始
+async function startStudyTimer() {
+    try {
+
+        const r = await fetch('/api/study/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                lang: currentLang
+            })
+        });
+
+        if (!r.ok) {
+            throw new Error(await r.text());
+        }
+
+        const result = await r.json();
+
+        activeStudySession = result.session;
+
+        renderStudyTimer();
+
+    } catch (e) {
+        console.error('开始计时失败:', e);
+        alert('Start timer failed: ' + e.message);
+    }
+}
+
+
+// 停止
+async function stopStudyTimer() {
+    try {
+
+        const r = await fetch('/api/study/stop', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+
+        if (!r.ok) {
+            throw new Error(await r.text());
+        }
+
+        activeStudySession = null;
+
+        renderStudyTimer();
+
+    } catch (e) {
+        console.error('停止计时失败:', e);
+        alert('Stop timer failed: ' + e.message);
+    }
+}
+
+
+// Start / Stop 共用一个按钮
+async function toggleStudyTimer() {
+
+    const button = document.getElementById('study-timer-button');
+
+    if (button) button.disabled = true;
+
+    try {
+        if (activeStudySession) {
+            await stopStudyTimer();
+        } else {
+            await startStudyTimer();
+        }
+    } finally {
+        if (button) button.disabled = false;
+    }
+}
+    
     // --- 初始化 ---
     async function init() {
         // 更新界面语言
@@ -960,6 +1173,7 @@ async function syncWordToCloud(wordObj) {
         await loadWords();
         await loadResources();
         await loadPrompt();
+        await loadActiveStudySession();
 
         // 加载 API 配置
         document.getElementById('ai-api-url').value =
