@@ -2078,32 +2078,89 @@ async function loadActiveStudySession() {
 
 // 开始
 async function startStudyTimer() {
+
+    // -------------------------
+    // 先立即在前端开始
+    // -------------------------
+
+    const optimisticSession = {
+        id: 'pending',
+        lang: currentLang,
+        start_time:
+            new Date().toISOString(),
+        end_time: null,
+        duration_seconds: null
+    };
+
+
+    activeStudySession =
+        optimisticSession;
+
+    renderStudyTimer();
+
+
+    // -------------------------
+    // 后台再真正保存
+    // -------------------------
+
     try {
 
-        const r = await fetch('/api/study/start', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                lang: currentLang
-            })
-        });
+        const r =
+            await fetch(
+                '/api/study/start',
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    credentials:
+                        'same-origin',
+
+                    body:
+                        JSON.stringify({
+                            lang: currentLang
+                        })
+                }
+            );
+
 
         if (!r.ok) {
-            throw new Error(await r.text());
+            throw new Error(
+                await r.text()
+            );
         }
 
-        const result = await r.json();
 
-        activeStudySession = result.session;
+        const result =
+            await r.json();
+
+
+        // 用服务器时间校准
+        activeStudySession =
+            result.session;
 
         renderStudyTimer();
 
+
     } catch (e) {
-        console.error('开始计时失败:', e);
-        alert('Start timer failed: ' + e.message);
+
+        // 保存失败才撤销
+        activeStudySession = null;
+
+        renderStudyTimer();
+
+        console.error(
+            '开始计时失败:',
+            e
+        );
+
+        alert(
+            'Start timer failed: ' +
+            e.message
+        );
     }
 }
 
@@ -2158,6 +2215,8 @@ let studyAnalyticsOpen = false;
 
 // 打开学习分析
 function openStudyAnalytics() {
+
+    stopAllSpeech();
 
     studyAnalyticsOpen = true;
     updateStudyAnalyticsLanguage();
@@ -2441,7 +2500,7 @@ function setupStudyTimerGestures() {
             }
 
 
-            // 第一次点击先等待 260ms
+            // 第一次点击先等待 160ms
             // 如果没有第二次点击，才真正 Start / Stop
             clickTimer =
                 setTimeout(async () => {
@@ -2450,7 +2509,7 @@ function setupStudyTimerGestures() {
 
                     await toggleStudyTimer();
 
-                }, 260);
+                }, 160);
         }
     );
 }
@@ -4924,15 +4983,47 @@ async function saveManualStudySession() {
         speechSynthesis.speak(utterance);
     }
 
+    let speechGeneration = 0;
+
+    function stopAllSpeech() {
+
+        // 让所有旧的连续朗读失效
+        speechGeneration++;
+
+        if ('speechSynthesis' in window) {
+            speechSynthesis.cancel();
+        }
+    }
+
     function speakTextSequence(texts) {
+
         if (!('speechSynthesis' in window)) return;
-        const validTexts = (texts || []).filter(Boolean);
+
+        const validTexts =
+            (texts || []).filter(Boolean);
+
         if (validTexts.length === 0) return;
 
+
+        // 开始新的一轮朗读
+        speechGeneration++;
+
+        const myGeneration =
+            speechGeneration;
+
         speechSynthesis.cancel();
+
         let index = 0;
 
         const speakNext = () => {
+
+            // 页面已经切换 / 朗读已被取消
+            if (
+                myGeneration !== speechGeneration
+            ) {
+                return;
+            }
+
             if (index >= validTexts.length) return;
             const utterance = new SpeechSynthesisUtterance(cleanTextForSpeech(validTexts[index++]));
             utterance.rate = sentenceSpeechRate;
@@ -5085,9 +5176,7 @@ async function saveManualStudySession() {
             clearTimeout(learningSpeechTimer);
             learningSpeechTimer = null;
         }
-        if ('speechSynthesis' in window) {
-            speechSynthesis.cancel();
-        }
+        stopAllSpeech();
 
         document.querySelectorAll('.panel').forEach(el => el.classList.add('hidden')); 
         document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active')); 
