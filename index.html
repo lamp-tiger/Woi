@@ -674,6 +674,125 @@
         padding: 7px 5px;
     }
 }
+/* =========================================================
+   Mobile Compact Layout
+========================================================= */
+
+@media (max-width: 768px) {
+
+    /* 整体减少左右空白 */
+    body {
+        padding: 0;
+    }
+
+    .container {
+        padding: 8px;
+    }
+
+
+    /* ---------- 顶部语言 / Timer ---------- */
+
+    .lang-switcher {
+        margin: 8px 8px 6px;
+        padding: 5px 8px;
+        border-radius: 8px;
+        min-height: 34px;
+    }
+
+    .lang-btn {
+        padding: 3px 9px;
+        font-size: 12px;
+    }
+
+    .study-timer-mini {
+        padding: 3px 8px;
+        min-width: 38px;
+        font-size: 14px;
+    }
+
+
+    /* ---------- 四个导航按钮 ---------- */
+
+    .nav {
+        gap: 4px;
+        margin-bottom: 6px;
+    }
+
+    .nav button {
+        min-height: 48px;
+        padding: 6px 3px;
+
+        font-size: 12px;
+        line-height: 1.15;
+
+        border-radius: 8px;
+    }
+
+    /* 图标和文字稍微紧凑 */
+    .nav button span {
+        font-size: 12px;
+    }
+
+
+    /* ---------- 今日进度 ---------- */
+
+    .stats-bar {
+        gap: 5px;
+        margin-bottom: 8px;
+    }
+
+    .stat-box {
+        padding: 7px 3px;
+        border-radius: 8px;
+        line-height: 1.15;
+    }
+
+    .stat-box span {
+        font-size: 12px;
+    }
+
+    .stat-box b {
+        font-size: 16px;
+    }
+
+
+    /* ---------- 学习卡片 ---------- */
+
+    .card {
+        padding: 14px 12px;
+        border-radius: 10px;
+    }
+
+    #quiz-card {
+        margin-top: 0;
+    }
+
+
+    /* 单词标题不要浪费太多上下空间 */
+    #quiz-card h1,
+    #quiz-card h2,
+    #quiz-card h3 {
+        margin-top: 4px;
+        margin-bottom: 8px;
+    }
+
+
+    /* ---------- 卡片内部 ---------- */
+
+    .answer-reveal {
+        padding: 10px;
+    }
+
+    .sentence-card {
+        padding: 16px 12px;
+    }
+
+
+    /* 手机不需要太大的区块间隔 */
+    .panel {
+        margin-top: 0;
+    }
+}
     </style>
 </head>
 <body>
@@ -1059,8 +1178,8 @@ SUPABASE 数据库表结构说明
         en: {
             // 导航
             navLearn: "Learn",
-            navSentences: "Read Sentences",
-            navImport: "Import & Resources",
+            navSentences: "Browse",
+            navImport: "Import",
             navLib: "Library",
             // 统计标签
             statNew: "New",
@@ -1141,7 +1260,7 @@ SUPABASE 数据库表结构说明
             // 导航
             navLearn: "学習",
             navSentences: "文を読む",
-            navImport: "インポートとリソース",
+            navImport: "インポート",
             navLib: "単語帳",
             // 统计标签
             statNew: "新規単語",
