@@ -688,11 +688,44 @@ SUPABASE 数据库表结构说明
     }
 
     // 切换语言
-    function switchLang(lang) {
-        currentLang = lang;
-        localStorage.setItem('lang', lang);
-        location.reload();
+    async function switchLang(lang) {
+
+    // 本来就是当前语言，不做任何事
+    if (lang === currentLang) return;
+
+    // 如果当前正在计时，切换语言前先自动停止
+    if (activeStudySession) {
+        try {
+            const r = await fetch('/api/study/stop', {
+                method: 'POST',
+                credentials: 'same-origin'
+            });
+
+            if (!r.ok) {
+                throw new Error(await r.text());
+            }
+
+            activeStudySession = null;
+
+        } catch (e) {
+            console.error('切换语言时停止计时失败:', e);
+
+            // 停止失败就不要切语言，
+            // 避免把学习时间记错
+            alert(
+                currentLang === 'ja'
+                    ? 'タイマーを停止できませんでした。もう一度お試しください。'
+                    : 'Could not stop the timer. Please try again.'
+            );
+
+            return;
+        }
     }
+
+    currentLang = lang;
+    localStorage.setItem('lang', lang);
+    location.reload();
+}
 
     // 更新界面语言
     function updateLanguageUI() {
