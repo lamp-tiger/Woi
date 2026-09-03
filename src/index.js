@@ -1143,6 +1143,85 @@ if (request.method === 'POST' && url.pathname === '/api/study/stop') {
         }
     });
 }
+    // ============================================================
+// Study History API
+// ============================================================
+
+// 获取全部已完成学习记录
+if (request.method === 'GET' && url.pathname === '/api/study/history') {
+
+    const user = await getCurrentUser(request, env);
+
+    if (!user) {
+        return jsonResponse(
+            { ok: false, error: 'Unauthorized' },
+            401
+        );
+    }
+
+    const result = await env.DB.prepare(`
+        SELECT
+            id,
+            start_time,
+            end_time,
+            duration_seconds,
+            lang,
+            source
+        FROM study_sessions
+        WHERE user_id = ?
+          AND end_time IS NOT NULL
+        ORDER BY start_time DESC
+    `)
+    .bind(user.id)
+    .all();
+
+    return jsonResponse({
+        ok: true,
+        sessions: result.results || []
+    });
+}
+
+
+// 删除一条学习记录
+if (
+    request.method === 'DELETE' &&
+    url.pathname.startsWith('/api/study/history/')
+) {
+
+    const user = await getCurrentUser(request, env);
+
+    if (!user) {
+        return jsonResponse(
+            { ok: false, error: 'Unauthorized' },
+            401
+        );
+    }
+
+    const id = decodeURIComponent(
+        url.pathname.slice('/api/study/history/'.length)
+    );
+
+    if (!id) {
+        return jsonResponse(
+            { ok: false, error: 'Missing session id' },
+            400
+        );
+    }
+
+    const result = await env.DB.prepare(`
+        DELETE FROM study_sessions
+        WHERE id = ?
+          AND user_id = ?
+          AND end_time IS NOT NULL
+    `)
+    .bind(id, user.id)
+    .run();
+
+    return jsonResponse({
+        ok: true,
+        deleted: result.meta?.changes || 0
+    });
+}
     return env.ASSETS.fetch(request);
   }
 };
