@@ -819,24 +819,46 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
     }
 
     // --- 同步单词到云端 ---
-    async function syncWordToCloud(wordObj) {
-        try {
-            const tableName = detectWordLanguage(wordObj.word) === 'ja' ? 'vocab_gois' : 'vocab_words';
-            await DB.upsert(tableName, {
-                id: wordObj.id, 
-                user_id: '00000000-0000-0000-0000-000000000000',
-                word: wordObj.word, 
-                orig_jp: wordObj.origJP, 
-                gen_jp: wordObj.genJP,
-                orig_cn: wordObj.origCN, 
-                gen_cn: wordObj.genCN, 
-                status: wordObj.status,
-                next_time: wordObj.nextTime ? new Date(wordObj.nextTime).toISOString() : new Date().toISOString(),
-                review_count: wordObj.count || 0, 
-                deleted: wordObj.deleted || false
-            });
-        } catch(e) { console.error("同步失败:", e); }
+async function syncWordToCloud(wordObj) {
+    try {
+        const lang = detectWordLanguage(wordObj.word);
+
+        const r = await fetch('/api/vocab', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                lang: lang,
+                id: wordObj.id,
+                word: wordObj.word,
+                orig_jp: wordObj.origJP || null,
+                gen_jp: wordObj.genJP || null,
+                orig_cn: wordObj.origCN || null,
+                gen_cn: wordObj.genCN || null,
+                status: wordObj.status || 'new',
+                next_time: wordObj.nextTime
+                    ? new Date(wordObj.nextTime).toISOString()
+                    : new Date().toISOString(),
+                review_count: wordObj.count || 0,
+                deleted: !!wordObj.deleted
+            })
+        });
+
+        if (r.status === 401) {
+            throw new Error('登录已失效，请重新登录');
+        }
+
+        if (!r.ok) {
+            throw new Error(await r.text());
+        }
+
+    } catch(e) {
+        console.error("同步失败:", e);
+        alert("单词同步失败: " + e.message);
     }
+}
 
     // --- 加载学习资源 ---
     async function loadResources() {
