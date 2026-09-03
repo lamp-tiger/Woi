@@ -249,6 +249,431 @@
         }
         .btn-cancel { background: #95a5a6; color: white; }
         .btn-confirm { background: var(--success); color: white; }
+    /* =========================================================
+   Study Analytics
+========================================================= */
+
+.analytics-title {
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    padding-left: 2px;
+}
+
+/* 分析页 */
+.study-analytics {
+    margin-bottom: 18px;
+}
+
+/* 今日学习 */
+.analytics-hero {
+    background: white;
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 12px;
+
+    display: flex;
+    align-items: center;
+    gap: 24px;
+
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+/* 今日环形图 */
+.today-ring {
+    --ring: 0deg;
+
+    width: 126px;
+    height: 126px;
+    flex: 0 0 auto;
+
+    border-radius: 50%;
+
+    background:
+        conic-gradient(
+            var(--accent) var(--ring),
+            #edf0f2 0
+        );
+
+    display: grid;
+    place-items: center;
+}
+
+.today-ring-inner {
+    width: 100px;
+    height: 100px;
+
+    border-radius: 50%;
+    background: white;
+
+    display: grid;
+    place-content: center;
+
+    text-align: center;
+}
+
+.today-ring-inner span {
+    font-size: 11px;
+    color: #8a949b;
+    letter-spacing: 0.08em;
+}
+
+.today-ring-inner strong {
+    font-size: 25px;
+    line-height: 1.25;
+    color: var(--primary);
+}
+
+.analytics-hero-text {
+    min-width: 0;
+}
+
+.analytics-note {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.analytics-subnote {
+    margin-top: 5px;
+    color: #8a949b;
+    font-size: 13px;
+}
+
+
+/* 7天 / 30天 / Total */
+.analytics-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+
+    margin-bottom: 12px;
+}
+
+.analytics-metric {
+    background: white;
+    border-radius: 12px;
+    padding: 14px 16px;
+
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+}
+
+.analytics-metric span {
+    display: block;
+
+    color: #8a949b;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+}
+
+.analytics-metric strong {
+    display: block;
+
+    margin: 3px 0 1px;
+
+    color: var(--primary);
+    font-size: 22px;
+}
+
+.analytics-metric small {
+    color: #a0a8ad;
+}
+
+
+/* 图表 / History 白色卡片 */
+.analytics-card {
+    background: white;
+
+    border-radius: 14px;
+
+    padding: 16px;
+    margin-bottom: 12px;
+
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.analytics-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 12px;
+}
+
+
+/* 7D / 30D / 90D 和 All / En / 日 */
+.analytics-tabs {
+    display: flex;
+    gap: 3px;
+
+    width: max-content;
+    max-width: 100%;
+
+    padding: 3px;
+
+    background: #f1f3f5;
+
+    border-radius: 9px;
+}
+
+.analytics-tabs button {
+    border: none;
+
+    padding: 5px 10px;
+
+    background: transparent;
+    color: #7b858c;
+
+    border-radius: 7px;
+
+    cursor: pointer;
+
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.analytics-tabs button.active {
+    background: white;
+    color: var(--primary);
+
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+#study-lang-tabs {
+    margin-bottom: 12px;
+}
+
+
+/* 柱状图区域 */
+.study-chart {
+    height: 190px;
+
+    display: flex;
+    align-items: flex-end;
+
+    gap: 4px;
+
+    padding: 12px 2px 24px;
+
+    border-bottom: 1px solid #edf0f2;
+
+    overflow: hidden;
+}
+
+
+/* JS 后面会动态生成这些 */
+.study-bar-wrap {
+    position: relative;
+
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+
+    cursor: pointer;
+}
+
+.study-bar {
+    width: min(70%, 28px);
+    min-height: 2px;
+
+    background: #cfd6da;
+
+    border-radius: 5px 5px 2px 2px;
+
+    transition: 0.15s ease;
+}
+
+.study-bar-wrap:hover .study-bar {
+    background: #aeb8be;
+}
+
+.study-bar-wrap.selected .study-bar {
+    background: var(--accent);
+}
+
+.study-bar-label {
+    position: absolute;
+    bottom: -22px;
+
+    color: #98a0a5;
+    font-size: 10px;
+
+    white-space: nowrap;
+}
+
+.study-chart-detail {
+    min-height: 34px;
+
+    padding-top: 11px;
+
+    color: #69747b;
+    font-size: 13px;
+}
+
+.study-chart-detail b {
+    color: var(--primary);
+}
+
+
+/* Add */
+.analytics-add-btn {
+    border: none;
+
+    padding: 7px 10px;
+
+    background: #f1f3f5;
+    color: var(--primary);
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-weight: 700;
+}
+
+.analytics-add-btn:hover {
+    background: #e7eaed;
+}
+
+
+/* 历史记录 */
+.study-day {
+    padding: 12px 0;
+
+    border-top: 1px solid #edf0f2;
+}
+
+.study-day:first-child {
+    border-top: none;
+}
+
+.study-day-head {
+    display: flex;
+    justify-content: space-between;
+
+    margin-bottom: 6px;
+
+    font-weight: 700;
+}
+
+.study-session-row {
+    display: grid;
+
+    grid-template-columns: 46px 1fr auto auto;
+
+    gap: 8px;
+    align-items: center;
+
+    padding: 7px 8px;
+    margin-top: 4px;
+
+    background: #f8f9fa;
+
+    border-radius: 8px;
+
+    font-size: 12px;
+}
+
+.study-session-lang {
+    font-weight: 700;
+}
+
+.study-session-time {
+    min-width: 0;
+
+    color: #6f7980;
+}
+
+.study-session-duration {
+    font-weight: 700;
+}
+
+.study-session-delete {
+    border: none;
+
+    background: transparent;
+    color: #a7afb4;
+
+    cursor: pointer;
+
+    font-size: 16px;
+}
+
+.study-session-delete:hover {
+    color: var(--danger);
+}
+
+.study-empty {
+    padding: 25px 0 12px;
+
+    text-align: center;
+
+    color: #9aa2a7;
+}
+
+
+/* 手机 */
+@media (max-width: 768px) {
+
+    .analytics-hero {
+        padding: 16px;
+        gap: 15px;
+    }
+
+    .today-ring {
+        width: 104px;
+        height: 104px;
+    }
+
+    .today-ring-inner {
+        width: 82px;
+        height: 82px;
+    }
+
+    .today-ring-inner strong {
+        font-size: 21px;
+    }
+
+    .analytics-note {
+        font-size: 15px;
+    }
+
+    .analytics-summary {
+        gap: 5px;
+    }
+
+    .analytics-metric {
+        padding: 10px 8px;
+    }
+
+    .analytics-metric strong {
+        font-size: 17px;
+    }
+
+    .analytics-metric small {
+        font-size: 10px;
+    }
+
+    .study-chart {
+        height: 165px;
+        gap: 2px;
+    }
+
+    .study-session-row {
+        grid-template-columns: 34px 1fr auto auto;
+
+        gap: 5px;
+
+        padding: 7px 5px;
+    }
+}
     </style>
 </head>
 <body>
@@ -327,10 +752,12 @@ SUPABASE 数据库表结构说明
         <button class="lang-btn" id="btn-ja" onclick="switchLang('ja')">日</button>
     </div>
 
+    <div id="analytics-title" class="analytics-title hidden"></div>
+
     <button
         id="study-timer-button"
         class="study-timer-mini"
-        onclick="toggleStudyTimer()">
+        type="button">
         ▶
     </button>
 
@@ -338,39 +765,113 @@ SUPABASE 数据库表结构说明
 
 <div class="container">
 
-    
-<!-- 学习时间统计 -->
-<div class="study-history-card">
+<!-- 学习分析页：默认隐藏 -->
+<div id="study-analytics" class="study-analytics hidden">
 
-    <div class="study-summary">
+    <!-- 今日学习 -->
+    <div class="analytics-hero">
 
-        <div class="study-summary-item">
-            <span>Today</span>
-            <strong id="study-today">0m</strong>
+        <div class="today-ring" id="today-ring">
+            <div class="today-ring-inner">
+                <span id="analytics-today-label">TODAY</span>
+                <strong id="study-today">0s</strong>
+            </div>
         </div>
 
-        <div class="study-summary-item">
-            <span>7 Days</span>
-            <strong id="study-7days">0m</strong>
-        </div>
+        <div class="analytics-hero-text">
+            <div id="analytics-today-note" class="analytics-note">
+                No study time today
+            </div>
 
-        <div class="study-summary-item">
-            <span>30 Days</span>
-            <strong id="study-30days">0m</strong>
-        </div>
-
-        <div class="study-summary-item">
-            <span>Total</span>
-            <strong id="study-total">0m</strong>
+            <div id="analytics-average-note" class="analytics-subnote">
+                7-day average: 0s/day
+            </div>
         </div>
 
     </div>
 
-    <div class="study-history-header">
-        <strong>📊 Study History</strong>
+
+    <!-- 7天 / 30天 / 总计 -->
+    <div class="analytics-summary">
+
+        <div class="analytics-metric">
+            <span id="analytics-7-label">7 DAYS</span>
+            <strong id="study-7days">0s</strong>
+            <small id="study-7avg">0s/day</small>
+        </div>
+
+        <div class="analytics-metric">
+            <span id="analytics-30-label">30 DAYS</span>
+            <strong id="study-30days">0s</strong>
+            <small id="study-30avg">0s/day</small>
+        </div>
+
+        <div class="analytics-metric">
+            <span id="analytics-total-label">TOTAL</span>
+            <strong id="study-total">0s</strong>
+            <small id="study-session-count">0 sessions</small>
+        </div>
+
     </div>
 
-    <div id="study-history-list"></div>
+
+    <!-- 学习趋势 -->
+    <div class="analytics-card">
+
+        <div class="analytics-card-head">
+
+            <strong id="analytics-trend-title">
+                Study Trend
+            </strong>
+
+            <div class="analytics-tabs" id="study-range-tabs">
+                <button type="button" data-days="7" class="active">7D</button>
+                <button type="button" data-days="30">30D</button>
+                <button type="button" data-days="90">90D</button>
+            </div>
+
+        </div>
+
+        <!-- 数据语言筛选 -->
+        <div class="analytics-tabs" id="study-lang-tabs">
+            <button type="button" data-lang="all" class="active">All</button>
+            <button type="button" data-lang="en">En</button>
+            <button type="button" data-lang="ja">日</button>
+        </div>
+
+        <!-- 后面 JS 会在这里生成图表 -->
+        <div id="study-chart" class="study-chart"></div>
+
+        <!-- 点击柱子后显示当天详情 -->
+        <div
+            id="study-chart-detail"
+            class="study-chart-detail">
+        </div>
+
+    </div>
+
+
+    <!-- 历史记录 -->
+    <div class="analytics-card">
+
+        <div class="analytics-card-head">
+
+            <strong id="analytics-history-title">
+                Study History
+            </strong>
+
+            <button
+                type="button"
+                class="analytics-add-btn"
+                onclick="openStudyAddModal()">
+                ＋ <span id="analytics-add-label">Add</span>
+            </button>
+
+        </div>
+
+        <div id="study-history-list"></div>
+
+    </div>
 
 </div>
     <div class="nav">
@@ -1123,6 +1624,11 @@ function renderStudyTimer() {
         document.getElementById('study-timer-button');
 
     if (!button) return;
+    // 分析页右上角始终显示 Home
+    if (studyAnalyticsOpen) {
+        button.textContent = '⌂';
+        return;
+    }
 
 
     if (studyTimerInterval) {
@@ -1251,7 +1757,301 @@ async function toggleStudyTimer() {
         if (button) button.disabled = false;
     }
 }
-    
+    // ============================================================
+// 学习分析页：打开 / 关闭
+// ============================================================
+
+let studyAnalyticsOpen = false;
+
+
+// 打开学习分析
+function openStudyAnalytics() {
+
+    studyAnalyticsOpen = true;
+
+    // 左侧 En / 日 隐藏
+    const langLeft = document.querySelector('.lang-left');
+    if (langLeft) {
+        langLeft.classList.add('hidden');
+    }
+
+    // 左侧显示分析页标题
+    const title = document.getElementById('analytics-title');
+
+    if (title) {
+        title.textContent =
+            currentLang === 'ja'
+                ? '学習分析'
+                : 'Study Analytics';
+
+        title.classList.remove('hidden');
+    }
+
+
+    // 隐藏主页导航
+    const nav = document.querySelector('.nav');
+
+    if (nav) {
+        nav.classList.add('hidden');
+    }
+
+
+    // 隐藏主页统计栏
+    const stats = document.querySelector('.stats-bar');
+
+    if (stats) {
+        stats.classList.add('hidden');
+    }
+
+
+    // 隐藏 Learn / Sentences / Import / Library 页面
+    document.querySelectorAll('.panel').forEach(panel => {
+        panel.classList.add('hidden');
+    });
+
+
+    // 显示分析页
+    const analytics =
+        document.getElementById('study-analytics');
+
+    if (analytics) {
+        analytics.classList.remove('hidden');
+    }
+
+
+    // 右上角变成房子
+    const button =
+        document.getElementById('study-timer-button');
+
+    if (button) {
+        button.textContent = '⌂';
+
+        button.setAttribute(
+            'aria-label',
+            currentLang === 'ja'
+                ? 'ホームに戻る'
+                : 'Back to home'
+        );
+    }
+}
+
+
+// 返回主页
+function closeStudyAnalytics() {
+
+    studyAnalyticsOpen = false;
+
+
+    // 恢复 En / 日
+    const langLeft =
+        document.querySelector('.lang-left');
+
+    if (langLeft) {
+        langLeft.classList.remove('hidden');
+    }
+
+
+    // 隐藏分析标题
+    const title =
+        document.getElementById('analytics-title');
+
+    if (title) {
+        title.classList.add('hidden');
+    }
+
+
+    // 隐藏分析页
+    const analytics =
+        document.getElementById('study-analytics');
+
+    if (analytics) {
+        analytics.classList.add('hidden');
+    }
+
+
+    // 恢复导航
+    const nav =
+        document.querySelector('.nav');
+
+    if (nav) {
+        nav.classList.remove('hidden');
+    }
+
+
+    // 恢复统计栏
+    const stats =
+        document.querySelector('.stats-bar');
+
+    if (stats) {
+        stats.classList.remove('hidden');
+    }
+
+
+    // 恢复当前导航对应的页面
+    const activeNav =
+        document.querySelector('.nav button.active');
+
+    const panelName =
+        activeNav
+            ? activeNav.id.replace('nav-', '')
+            : 'learn';
+
+    const panel =
+        document.getElementById(
+            `panel-${panelName}`
+        );
+
+    if (panel) {
+        panel.classList.remove('hidden');
+    }
+
+
+    // 恢复 ▶ 或当前计时时间
+    renderStudyTimer();
+}
+
+
+// ============================================================
+// 右上角计时器手势
+//
+// 单击      Start / Stop
+// 双击      打开学习分析
+// 长按600ms  打开学习分析
+// 分析页单击 ⌂ 返回主页
+// ============================================================
+
+function setupStudyTimerGestures() {
+
+    const button =
+        document.getElementById('study-timer-button');
+
+    if (!button) return;
+
+
+    // 防止 init 被意外执行两次时重复绑定
+    if (button.dataset.gestureReady === '1') {
+        return;
+    }
+
+    button.dataset.gestureReady = '1';
+
+
+    let clickTimer = null;
+    let longPressTimer = null;
+    let longPressed = false;
+
+
+    // ---------- 长按 ----------
+
+    button.addEventListener(
+        'pointerdown',
+        () => {
+
+            // 分析页不需要长按
+            if (studyAnalyticsOpen) {
+                return;
+            }
+
+            longPressed = false;
+
+            longPressTimer =
+                setTimeout(() => {
+
+                    longPressed = true;
+
+                    // 如果之前有等待执行的单击，取消
+                    if (clickTimer) {
+                        clearTimeout(clickTimer);
+                        clickTimer = null;
+                    }
+
+                    openStudyAnalytics();
+
+                }, 600);
+        }
+    );
+
+
+    function cancelLongPress() {
+
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+        }
+
+        longPressTimer = null;
+    }
+
+
+    button.addEventListener(
+        'pointerup',
+        cancelLongPress
+    );
+
+    button.addEventListener(
+        'pointercancel',
+        cancelLongPress
+    );
+
+    button.addEventListener(
+        'pointerleave',
+        cancelLongPress
+    );
+
+
+    // ---------- 单击 / 双击 ----------
+
+    button.addEventListener(
+        'click',
+        () => {
+
+            // 长按松手后浏览器通常还会产生 click
+            // 这里把它吃掉
+            if (longPressed) {
+
+                longPressed = false;
+
+                return;
+            }
+
+
+            // 已经在分析页：
+            // 单击右上角房子直接回主页
+            if (studyAnalyticsOpen) {
+
+                closeStudyAnalytics();
+
+                return;
+            }
+
+
+            // 已经存在一次等待中的 click
+            // = 第二次点击
+            // = 双击
+            if (clickTimer) {
+
+                clearTimeout(clickTimer);
+
+                clickTimer = null;
+
+                openStudyAnalytics();
+
+                return;
+            }
+
+
+            // 第一次点击先等待 260ms
+            // 如果没有第二次点击，才真正 Start / Stop
+            clickTimer =
+                setTimeout(async () => {
+
+                    clickTimer = null;
+
+                    await toggleStudyTimer();
+
+                }, 260);
+        }
+    );
+}
     // --- 初始化 ---
     async function init() {
         // 更新界面语言
@@ -1272,6 +2072,7 @@ async function toggleStudyTimer() {
         await loadResources();
         await loadPrompt();
         await loadActiveStudySession();
+        setupStudyTimerGestures();
 
         // 加载 API 配置
         document.getElementById('ai-api-url').value =
