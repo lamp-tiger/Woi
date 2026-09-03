@@ -1974,7 +1974,66 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
         }, 1500); 
     }
 
-    init();
+async function startWoi() {
+    try {
+        const response = await fetch('/api/me');
+
+        if (!response.ok) {
+            document.body.innerHTML = `
+                <div style="
+                    max-width:360px;
+                    margin:100px auto;
+                    padding:30px;
+                    font-family:Arial,sans-serif;
+                    text-align:center;
+                ">
+                    <h2>Woi</h2>
+                    <p>Please log in to continue.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.authenticated) {
+            document.body.innerHTML = `
+                <div style="
+                    max-width:360px;
+                    margin:100px auto;
+                    padding:30px;
+                    font-family:Arial,sans-serif;
+                    text-align:center;
+                ">
+                    <h2>Woi</h2>
+                    <p>Please log in to continue.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // 已登录，才启动原来的 Woi
+        await init();
+
+    } catch (error) {
+        console.error("Authentication check failed:", error);
+
+        document.body.innerHTML = `
+            <div style="
+                max-width:360px;
+                margin:100px auto;
+                padding:30px;
+                font-family:Arial,sans-serif;
+                text-align:center;
+            ">
+                <h2>Woi</h2>
+                <p>Unable to verify login. Please refresh.</p>
+            </div>
+        `;
+    }
+}
+
+startWoi();
 </script>
 </body>
 </html>
