@@ -994,81 +994,76 @@ SUPABASE 数据库表结构说明
 
         </div>
 
+        <!-- 追加表单：在历史记录列表上方展开 -->
+        <div id="study-add-modal"
+             class="study-add-modal hidden">
+
+            <div class="study-add-dialog">
+
+                <div class="study-add-head">
+
+                    <strong id="study-add-title">
+                        Add Study Record
+                    </strong>
+
+                    <button
+                        type="button"
+                        class="study-add-close"
+                        onclick="closeStudyAddModal()">
+                        ×
+                    </button>
+
+                </div>
+
+                <label id="study-add-lang-label">
+                    Language
+                </label>
+
+                <select id="study-add-lang">
+                    <option value="en">English</option>
+                    <option value="ja">日本語</option>
+                </select>
+
+                <label id="study-add-date-label">
+                    Date
+                </label>
+
+                <input
+                    id="study-add-date"
+                    type="date">
+
+                <label id="study-add-start-label">
+                    Start
+                </label>
+
+                <input
+                    id="study-add-start"
+                    type="time">
+
+                <label id="study-add-end-label">
+                    End
+                </label>
+
+                <input
+                    id="study-add-end"
+                    type="time">
+
+                <button
+                    type="button"
+                    class="study-add-save"
+                    onclick="saveManualStudySession()">
+                    <span id="study-add-save-label">
+                        Save
+                    </span>
+                </button>
+
+            </div>
+        </div>
+
         <div id="study-history-list"></div>
 
     </div>
 
-</div> 
-<!-- 手动添加学习记录 -->
-<div id="study-add-modal"
-     class="study-add-modal hidden">
-
-    <div class="study-add-dialog">
-
-        <div class="study-add-head">
-
-            <strong id="study-add-title">
-                Add Study Record
-            </strong>
-
-            <button
-                type="button"
-                class="study-add-close"
-                onclick="closeStudyAddModal()">
-                ×
-            </button>
-
-        </div>
-
-
-        <label id="study-add-lang-label">
-            Language
-        </label>
-
-        <select id="study-add-lang">
-            <option value="en">English</option>
-            <option value="ja">日本語</option>
-        </select>
-
-
-        <label id="study-add-date-label">
-            Date
-        </label>
-
-        <input
-            id="study-add-date"
-            type="date">
-
-
-        <label id="study-add-start-label">
-            Start
-        </label>
-
-        <input
-            id="study-add-start"
-            type="time">
-
-
-        <label id="study-add-end-label">
-            End
-        </label>
-
-        <input
-            id="study-add-end"
-            type="time">
-
-
-        <button
-            type="button"
-            class="study-add-save"
-            onclick="saveManualStudySession()">
-            <span id="study-add-save-label">
-                Save
-            </span>
-        </button>
-
-
-</div>
 </div>
     <div class="nav">
         <button id="nav-learn" class="active" onclick="showPanel('learn')">📖 <span class="nav-text-learn">背诵模式</span></button>
@@ -3910,17 +3905,29 @@ async function saveManualStudySession() {
         else if (type === 'both') speakTextSequence([word.origJP, word.genJP]);
     }
 
+    let learningSpeechTimer = null;
+
     function autoSpeakLearningPhase() {
+        if (learningSpeechTimer) {
+            clearTimeout(learningSpeechTimer);
+            learningSpeechTimer = null;
+        }
+
         const word = session.queue[session.currentIndex];
         if (!word || !sentenceAutoSpeak) return;
 
         if (session.phase === 'PREVIEW') {
-            // 预览阶段依次朗读原句和例句
-            setTimeout(() => speakTextSequence([word.origJP, word.genJP]), 80);
+            learningSpeechTimer = setTimeout(() => {
+                speakTextSequence([word.origJP, word.genJP]);
+            }, 80);
         } else if (session.phase === 'GEN_VERIFY') {
-            setTimeout(() => speakText(word.genJP), 80);
+            learningSpeechTimer = setTimeout(() => {
+                speakText(word.genJP);
+            }, 80);
         } else if (session.phase === 'ORIG_VERIFY') {
-            setTimeout(() => speakText(word.origJP), 80);
+            learningSpeechTimer = setTimeout(() => {
+                speakText(word.origJP);
+            }, 80);
         }
     }
 
@@ -4016,6 +4023,15 @@ async function saveManualStudySession() {
     }
 
     function showPanel(p) { 
+        // 切换页面时取消待执行的语音定时器 + 立即停止当前语音
+        if (learningSpeechTimer) {
+            clearTimeout(learningSpeechTimer);
+            learningSpeechTimer = null;
+        }
+        if ('speechSynthesis' in window) {
+            speechSynthesis.cancel();
+        }
+
         document.querySelectorAll('.panel').forEach(el => el.classList.add('hidden')); 
         document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active')); 
         document.getElementById(`panel-${p}`).classList.remove('hidden'); 
