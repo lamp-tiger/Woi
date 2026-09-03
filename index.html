@@ -981,42 +981,44 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
 
     // --- 加载单词 ---
     async function loadWords() {
-        try {
-            // 加载英语单词
-            const enData = await DB.select('vocab_words', 'deleted=eq.false');
-            const enWords = enData.map(w => ({
-                ...w, 
-                origJP: w.orig_jp, 
-                genJP: w.gen_jp, 
-                origCN: w.orig_cn, 
-                genCN: w.gen_cn,
-                nextTime: w.next_time ? new Date(w.next_time).getTime() : Date.now(),
-                count: w.review_count || 0
-            }));
-            
-            // 加载日语单词
-            const jaData = await DB.select('vocab_gois', 'deleted=eq.false');
-            const jaWords = jaData.map(w => ({
-                ...w, 
-                origJP: w.orig_jp, 
-                genJP: w.gen_jp, 
-                origCN: w.orig_cn, 
-                genCN: w.gen_cn,
-                nextTime: w.next_time ? new Date(w.next_time).getTime() : Date.now(),
-                count: w.review_count || 0
-            }));
-            
-            // 根据当前语言选择显示的词库
-            if (currentLang === 'ja') {
-                words = jaWords;
-            } else {
-                words = enWords;
-            }
-        } catch(e) { 
-            console.error("加载词库失败:", e);
-            alert("加载词库失败");
+    try {
+        // 只读取当前语言，并通过 Worker 自动识别当前登录用户
+        const r = await fetch(`/api/vocab?lang=${currentLang}`, {
+            credentials: 'same-origin'
+        });
+
+        if (r.status === 401) {
+            throw new Error('登录已失效，请重新登录');
         }
+
+        if (!r.ok) {
+            throw new Error(await r.text());
+        }
+
+        const result = await r.json();
+        const data = result.words || [];
+
+        words = data.map(w => ({
+            ...w,
+            origJP: w.orig_jp,
+            genJP: w.gen_jp,
+            origCN: w.orig_cn,
+            genCN: w.gen_cn,
+            nextTime: w.next_time
+                ? new Date(w.next_time).getTime()
+                : Date.now(),
+            count: w.review_count || 0,
+            deleted: !!w.deleted
+        }));
+
+        console.log(`D1 loaded: ${words.length} ${currentLang} words`);
+
+    } catch(e) {
+        console.error("加载词库失败:", e);
+        alert("加载词库失败: " + e.message);
+        words = [];
     }
+}
 
     function save() {
         localStorage.setItem('en_v3_settings_' + currentLang, JSON.stringify(settings));
