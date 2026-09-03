@@ -542,6 +542,51 @@
     background: #e7eaed;
 }
 
+/* 学习记录手动追加 */
+.study-add-modal,
+.study-add-modal *,
+.study-add-dialog,
+.study-add-dialog * {
+    font-family: inherit;
+}
+
+.study-add-modal {
+    margin-top: 10px;
+    padding: 12px;
+    background: #f7f9fa;
+    border-radius: 10px;
+}
+
+.study-add-field {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 9px;
+}
+
+.study-add-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #647078;
+}
+
+.study-add-field input,
+.study-add-modal select {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid #dfe4e7;
+    border-radius: 7px;
+    background: white;
+    font-family: inherit;
+    font-size: 13px;
+    color: inherit;
+}
+
+.study-add-save {
+    font-family: inherit;
+}
 
 /* 历史记录 */
 .study-day {
@@ -1024,29 +1069,25 @@ SUPABASE 数据库表结构说明
                     <option value="ja">日本語</option>
                 </select>
 
-                <label id="study-add-date-label">
-                    Date
-                </label>
+                <div class="study-add-field">
+                    <label id="study-add-duration-label">
+                        Duration
+                    </label>
+                    <input
+                        id="study-add-duration"
+                        type="text"
+                        placeholder="0h50m"
+                        autocomplete="off">
+                </div>
 
-                <input
-                    id="study-add-date"
-                    type="date">
-
-                <label id="study-add-start-label">
-                    Start
-                </label>
-
-                <input
-                    id="study-add-start"
-                    type="time">
-
-                <label id="study-add-end-label">
-                    End
-                </label>
-
-                <input
-                    id="study-add-end"
-                    type="time">
+                <div class="study-add-field">
+                    <label id="study-add-end-label">
+                        End time
+                    </label>
+                    <input
+                        id="study-add-end"
+                        type="time">
+                </div>
 
                 <button
                     type="button"
@@ -2626,18 +2667,13 @@ function updateStudyAnalyticsLanguage() {
     );
 
     setText(
-        'study-add-date-label',
-        ja ? '日付' : 'Date'
-    );
-
-    setText(
-        'study-add-start-label',
-        ja ? '開始' : 'Start'
+        'study-add-duration-label',
+        ja ? '持続時間' : 'Duration'
     );
 
     setText(
         'study-add-end-label',
-        ja ? '終了' : 'End'
+        ja ? '終了時間' : 'End time'
     );
 
     setText(
@@ -3154,34 +3190,29 @@ function openStudyAddModal() {
 
     if (!modal) return;
 
-
     const now = new Date();
 
-    const localDate =
-        `${now.getFullYear()}-` +
-        `${String(now.getMonth() + 1).padStart(2, '0')}-` +
-        `${String(now.getDate()).padStart(2, '0')}`;
-
-
-    document.getElementById(
-        'study-add-date'
-    ).value = localDate;
-
+    const currentTime =
+        `${String(now.getHours()).padStart(2, '0')}:` +
+        `${String(now.getMinutes()).padStart(2, '0')}`;
 
     document.getElementById(
         'study-add-lang'
     ).value = currentLang;
 
-
-    // 当前时间作为默认结束时间
     document.getElementById(
         'study-add-end'
-    ).value =
-        `${String(now.getHours()).padStart(2, '0')}:` +
-        `${String(now.getMinutes()).padStart(2, '0')}`;
+    ).value = currentTime;
 
+    document.getElementById(
+        'study-add-duration'
+    ).value = '';
 
     modal.classList.remove('hidden');
+
+    document.getElementById(
+        'study-add-duration'
+    ).focus();
 }
 
 
@@ -3205,57 +3236,68 @@ async function saveManualStudySession() {
             'study-add-lang'
         ).value;
 
-    const date =
+    const durationText =
         document.getElementById(
-            'study-add-date'
-        ).value;
+            'study-add-duration'
+        ).value.trim();
 
-    const start =
-        document.getElementById(
-            'study-add-start'
-        ).value;
-
-    const end =
+    const endText =
         document.getElementById(
             'study-add-end'
         ).value;
 
-
-    if (!date || !start || !end) {
-
-        alert(
-            currentLang === 'ja'
-                ? 'すべての項目を入力してください'
-                : 'Please complete all fields'
+    const match =
+        durationText.match(
+            /^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?$/i
         );
 
+    if (!match || (!match[1] && !match[2])) {
+        alert(
+            currentLang === 'ja'
+                ? '0h50m の形式で入力してください'
+                : 'Enter duration like 0h50m'
+        );
         return;
     }
 
+    const hours = Number(match[1] || 0);
+    const minutes = Number(match[2] || 0);
+    const durationSeconds = (hours * 60 + minutes) * 60;
 
-    // 浏览器本地时间
-    const startDate =
-        new Date(`${date}T${start}:00`);
-
-    const endDate =
-        new Date(`${date}T${end}:00`);
-
-
-    if (
-        Number.isNaN(startDate.getTime()) ||
-        Number.isNaN(endDate.getTime()) ||
-        endDate <= startDate
-    ) {
-
+    if (durationSeconds <= 0) {
         alert(
             currentLang === 'ja'
-                ? '終了時刻は開始時刻より後にしてください'
-                : 'End time must be after start time'
+                ? '学習時間を入力してください'
+                : 'Enter a study duration'
         );
-
         return;
     }
 
+    if (!endText) {
+        alert(
+            currentLang === 'ja'
+                ? '終了時間を入力してください'
+                : 'Enter an end time'
+        );
+        return;
+    }
+
+    const now = new Date();
+    const [endHour, endMinute] =
+        endText.split(':').map(Number);
+
+    const endDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        endHour,
+        endMinute,
+        0, 0
+    );
+
+    const startDate = new Date(
+        endDate.getTime() - durationSeconds * 1000
+    );
 
     try {
 
@@ -3283,19 +3325,14 @@ async function saveManualStudySession() {
                 }
             );
 
-
         if (!response.ok) {
             throw new Error(
                 await response.text()
             );
         }
 
-
         closeStudyAddModal();
-
-        // 重新读取所有统计
         await loadStudyHistory();
-
 
     } catch (error) {
 
