@@ -27,11 +27,75 @@
 
         /* 移动端操作区 */
         .mobile-actions { display: none; flex-direction: column; gap: 10px; margin-top: 20px; }
-        @media (max-width: 768px) {
-            .mobile-actions { display: flex; }
-            .word-title { font-size: 28px; }
-            .nav button { padding: 8px; font-size: 13px; }
-        }
+@media (max-width: 768px) {
+    body {
+        padding: 8px;
+        overflow-x: hidden;
+    }
+
+    .container {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .card {
+        padding: 16px;
+        border-radius: 10px;
+        box-sizing: border-box;
+    }
+
+    .mobile-actions {
+        display: flex;
+    }
+
+    .word-title {
+        font-size: 28px;
+    }
+
+    .nav {
+        gap: 4px;
+    }
+
+    .nav button {
+        padding: 8px 4px;
+        font-size: 12px;
+        min-width: 0;
+    }
+
+    /* 学习资源：手机端改成纵向排列 */
+    #panel-add .card > div[style*="display:flex"] {
+        flex-wrap: wrap;
+    }
+
+    #link-name,
+    #link-url {
+        flex: none !important;
+        width: 100% !important;
+        box-sizing: border-box;
+        min-width: 0;
+    }
+
+    #link-name + #link-url {
+        margin-top: 0;
+    }
+
+    #link-url + button {
+        width: 100%;
+    }
+
+    textarea,
+    input,
+    select {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .table-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+}
         .btn-main-action { height: 60px; font-size: 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; background: var(--accent); color: white; }
         .btn-sub-group { display: flex; gap: 10px; }
         .btn-sub-action { flex: 1; height: 45px; border-radius: 8px; border: none; color: white; font-weight: bold; }
