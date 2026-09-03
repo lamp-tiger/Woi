@@ -1222,6 +1222,133 @@ if (
         deleted: result.meta?.changes || 0
     });
 }
+    // ============================================================
+// 手动添加学习记录
+// POST /api/study/manual
+// ============================================================
+
+if (
+    request.method === 'POST' &&
+    url.pathname === '/api/study/manual'
+) {
+
+    const user = await getCurrentUser(request, env);
+
+    if (!user) {
+        return jsonResponse(
+            { ok: false, error: 'Unauthorized' },
+            401
+        );
+    }
+
+    try {
+
+        const body = await request.json();
+
+        const lang = String(body.lang || '');
+        const startTime = String(body.start_time || '');
+        const endTime = String(body.end_time || '');
+
+        // 语言只能是英文或日文
+        if (!['en', 'ja'].includes(lang)) {
+            return jsonResponse(
+                { ok: false, error: 'Invalid language' },
+                400
+            );
+        }
+
+
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        // 检查时间是否合法
+        if (
+            Number.isNaN(start.getTime()) ||
+            Number.isNaN(end.getTime())
+        ) {
+            return jsonResponse(
+                { ok: false, error: 'Invalid time' },
+                400
+            );
+        }
+
+
+        // 结束时间必须晚于开始时间
+        if (end.getTime() <= start.getTime()) {
+            return jsonResponse(
+                {
+                    ok: false,
+                    error: 'End time must be after start time'
+                },
+                400
+            );
+        }
+
+
+        const durationSeconds = Math.floor(
+            (end.getTime() - start.getTime()) / 1000
+        );
+
+        const id = crypto.randomUUID();
+
+
+        await env.DB.prepare(`
+            INSERT INTO study_sessions (
+                id,
+                user_id,
+                start_time,
+                end_time,
+                duration_seconds,
+                lang,
+                source,
+                created_at,
+                updated_at
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?, 'manual',
+                CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP
+            )
+        `)
+        .bind(
+            id,
+            user.id,
+            start.toISOString(),
+            end.toISOString(),
+            durationSeconds,
+            lang
+        )
+        .run();
+
+
+        return jsonResponse({
+            ok: true,
+            session: {
+                id,
+                start_time: start.toISOString(),
+                end_time: end.toISOString(),
+                duration_seconds: durationSeconds,
+                lang,
+                source: 'manual'
+            }
+        });
+
+    } catch (error) {
+
+        console.error(
+            'Manual study session failed:',
+            error
+        );
+
+        return jsonResponse(
+            {
+                ok: false,
+                error: 'Failed to add study session'
+            },
+            500
+        );
+    }
+}
     return env.ASSETS.fetch(request);
   }
 };
