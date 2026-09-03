@@ -446,74 +446,163 @@
 }
 
 
-/* 柱状图区域 */
+/* =========================================================
+   Study Trend
+========================================================= */
+
 .study-chart {
-    height: 190px;
-
-    display: flex;
-    align-items: flex-end;
-
-    gap: 4px;
-
-    padding: 12px 2px 24px;
-
-    border-bottom: 1px solid #edf0f2;
-
+    position: relative;
+    width: 100%;
+    height: 330px;
+    padding: 8px 0 28px;
+    box-sizing: border-box;
     overflow: hidden;
 }
 
 
-/* JS 后面会动态生成这些 */
-.study-bar-wrap {
+/* 整张时间分布图 */
+.study-trend-grid {
     position: relative;
 
-    flex: 1;
-    min-width: 0;
+    display: grid;
+
     height: 100%;
+    padding-left: 44px;
 
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-
-    cursor: pointer;
+    box-sizing: border-box;
 }
 
-.study-bar {
-    width: min(70%, 28px);
-    min-height: 2px;
 
-    background: #cfd6da;
-
-    border-radius: 5px 5px 2px 2px;
-
-    transition: 0.15s ease;
-}
-
-.study-bar-wrap:hover .study-bar {
-    background: #aeb8be;
-}
-
-.study-bar-wrap.selected .study-bar {
-    background: var(--accent);
-}
-
-.study-bar-label {
+/* 左侧 Y 轴 */
+.study-trend-axis {
     position: absolute;
-    bottom: -22px;
 
-    color: #98a0a5;
-    font-size: 10px;
+    left: 0;
+    top: 0;
+    bottom: 0;
+
+    width: 40px;
+
+    color: #9aa2a7;
+    font-size: 9px;
+
+    pointer-events: none;
+}
+
+
+/* Y轴文字 */
+.study-axis-label {
+    position: absolute;
+
+    right: 7px;
+
+    transform: translateY(-50%);
 
     white-space: nowrap;
 }
 
+
+/* 横向辅助线 */
+.study-grid-line {
+    position: absolute;
+
+    left: 44px;
+    right: 0;
+
+    height: 1px;
+
+    background: #f0f2f3;
+
+    pointer-events: none;
+}
+
+
+/* 每一列 */
+.study-trend-column {
+    position: relative;
+
+    min-width: 0;
+    height: 100%;
+
+    border: none;
+    padding: 0;
+
+    background: transparent;
+
+    cursor: pointer;
+}
+
+
+/* 背景总量柱 */
+.study-volume-bar {
+    position: absolute;
+
+    left: 20%;
+    width: 60%;
+
+    bottom: 0;
+
+    background: rgba(130, 140, 148, 0.10);
+
+    border-radius: 5px 5px 2px 2px;
+}
+
+
+/* 前景学习区块 */
+.study-time-block {
+    position: absolute;
+
+    left: 28%;
+    width: 44%;
+
+    min-height: 2px;
+
+    border-radius: 4px;
+
+    z-index: 2;
+}
+
+
+/* 月度 / 季度热度格 */
+.study-heat-block {
+    position: absolute;
+
+    left: 25%;
+    width: 50%;
+
+    min-height: 3px;
+
+    border-radius: 3px;
+
+    background: var(--accent);
+}
+
+
+/* X轴标签 */
+.study-trend-label {
+    position: absolute;
+
+    left: 50%;
+    bottom: -22px;
+
+    transform: translateX(-50%);
+
+    color: #8f989e;
+
+    font-size: 9px;
+
+    white-space: nowrap;
+}
+
+
+/* 点击后的详情 */
 .study-chart-detail {
     min-height: 34px;
 
     padding-top: 11px;
 
     color: #69747b;
+
     font-size: 13px;
 }
 
@@ -995,9 +1084,24 @@ SUPABASE 数据库表结构说明
             </strong>
 
             <div class="analytics-tabs" id="study-range-tabs">
-                <button type="button" data-days="7" class="active">7D</button>
-                <button type="button" data-days="30">30D</button>
-                <button type="button" data-days="90">90D</button>
+                <button
+                    type="button"
+                    data-range="7d"
+                    class="active">
+                    7D
+                </button>
+
+                <button
+                    type="button"
+                    data-range="monthly">
+                    Monthly
+                </button>
+
+                <button
+                    type="button"
+                    data-range="quarterly">
+                    Quarterly
+                </button>
             </div>
 
         </div>
@@ -2305,7 +2409,7 @@ function setupStudyTimerGestures() {
 // ============================================================
 
 let studyHistory = [];
-let studyChartDays = 7;
+let studyChartRange = '7d';
 let studyChartLang = 'all';
 
 // 获取历史记录
@@ -2630,6 +2734,37 @@ function updateStudyAnalyticsLanguage() {
         ja ? '学習推移' : 'Study Trend'
     );
 
+    const range7 =
+        document.querySelector(
+            '#study-range-tabs [data-range="7d"]'
+        );
+
+    const rangeMonthly =
+        document.querySelector(
+            '#study-range-tabs [data-range="monthly"]'
+        );
+
+    const rangeQuarterly =
+        document.querySelector(
+            '#study-range-tabs [data-range="quarterly"]'
+        );
+
+
+    if (range7) {
+        range7.textContent =
+            ja ? '7日' : '7D';
+    }
+
+    if (rangeMonthly) {
+        rangeMonthly.textContent =
+            ja ? '月別' : 'Monthly';
+    }
+
+    if (rangeQuarterly) {
+        rangeQuarterly.textContent =
+            ja ? '四半期' : 'Quarterly';
+    }
+
     setText(
         'analytics-history-title',
         ja ? '学習履歴' : 'Study History'
@@ -2684,71 +2819,240 @@ function updateStudyAnalyticsLanguage() {
     // ============================================================
 // Study History
 // ============================================================
-function renderStudyChart() {
+// 根据一天中的时间生成颜色
+// 白天偏红，夜晚偏蓝
+function getStudyTimeColor(hour) {
+
+    const stops = [
+        { hour: 0,  rgb: [74, 105, 180] },
+        { hour: 6,  rgb: [105, 120, 180] },
+        { hour: 12, rgb: [205, 105, 105] },
+        { hour: 18, rgb: [170, 105, 135] },
+        { hour: 24, rgb: [74, 105, 180] }
+    ];
+
+
+    let left = stops[0];
+    let right = stops[1];
+
+    for (let i = 0; i < stops.length - 1; i++) {
+
+        if (
+            hour >= stops[i].hour &&
+            hour <= stops[i + 1].hour
+        ) {
+            left = stops[i];
+            right = stops[i + 1];
+            break;
+        }
+    }
+
+
+    const ratio =
+        (hour - left.hour) /
+        (right.hour - left.hour || 1);
+
+
+    const rgb =
+        left.rgb.map(
+            (value, index) =>
+                Math.round(
+                    value +
+                    (
+                        right.rgb[index] -
+                        value
+                    ) * ratio
+                )
+        );
+
+
+    return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+}
+
+
+function getFilteredStudySessions() {
+
+    return studyHistory.filter(session => {
+
+        if (
+            !session.end_time ||
+            Number(session.duration_seconds) < 0
+        ) {
+            return false;
+        }
+
+        if (
+            studyChartLang !== 'all' &&
+            session.lang !== studyChartLang
+        ) {
+            return false;
+        }
+
+        return true;
+    });
+}
+
+
+function localDayStart(date) {
+
+    return new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    );
+}
+
+
+function sessionIsInRange(
+    session,
+    start,
+    end
+) {
+
+    const time =
+        new Date(session.start_time);
+
+    return time >= start && time < end;
+}
+
+
+function createTrendBase(
+    columns,
+    axisLabels
+) {
 
     const chart =
         document.getElementById('study-chart');
 
-    if (!chart) return;
+    chart.innerHTML = '';
 
 
-    const today = new Date();
+    const grid =
+        document.createElement('div');
+
+    grid.className =
+        'study-trend-grid';
+
+    grid.style.gridTemplateColumns =
+        `repeat(${columns.length}, 1fr)`;
+
+
+    const axis =
+        document.createElement('div');
+
+    axis.className =
+        'study-trend-axis';
+
+
+    axisLabels.forEach(item => {
+
+        const label =
+            document.createElement('span');
+
+        label.className =
+            'study-axis-label';
+
+        label.style.top =
+            `${item.position * 100}%`;
+
+        label.textContent =
+            item.label;
+
+        axis.appendChild(label);
+
+
+        const line =
+            document.createElement('div');
+
+        line.className =
+            'study-grid-line';
+
+        line.style.top =
+            `${item.position * 100}%`;
+
+        grid.appendChild(line);
+    });
+
+
+    grid.appendChild(axis);
+
+    chart.appendChild(grid);
+
+    return grid;
+}
+
+
+function renderStudyChart7D() {
+
+    const sessions =
+        getFilteredStudySessions();
+
+    const today =
+        localDayStart(new Date());
 
     const days = [];
 
 
-    // 生成最近 N 个自然日
-    for (
-        let i = studyChartDays - 1;
-        i >= 0;
-        i--
-    ) {
+    for (let i = 6; i >= 0; i--) {
 
-        const date = new Date(
-            today.getFullYear(),
-            today.getMonth(),
-            today.getDate()
+        const start =
+            new Date(today);
+
+        start.setDate(
+            start.getDate() - i
         );
 
-        date.setDate(
-            date.getDate() - i
+        const end =
+            new Date(start);
+
+        end.setDate(
+            end.getDate() + 1
         );
 
 
-        const sessions =
-            studyHistory.filter(session => {
-
-                if (
-                    studyChartLang !== 'all' &&
-                    session.lang !== studyChartLang
-                ) {
-                    return false;
-                }
-
-                return isSameLocalDay(
-                    new Date(session.start_time),
-                    date
-                );
-            });
+        const daySessions =
+            sessions.filter(session =>
+                sessionIsInRange(
+                    session,
+                    start,
+                    end
+                )
+            );
 
 
         days.push({
-            date,
-            sessions,
+            start,
+            end,
+            sessions: daySessions,
             seconds:
-                sumStudySeconds(sessions)
+                sumStudySeconds(daySessions)
         });
     }
 
 
     const maxSeconds =
         Math.max(
-            ...days.map(day => day.seconds),
+            ...days.map(
+                day => day.seconds
+            ),
             1
         );
 
 
-    chart.innerHTML = '';
+    const axisLabels = [
+        { position: 0,    label: '00' },
+        { position: 0.25, label: '06' },
+        { position: 0.5,  label: '12' },
+        { position: 0.75, label: '18' },
+        { position: 1,    label: '24' }
+    ];
+
+
+    const grid =
+        createTrendBase(
+            days,
+            axisLabels
+        );
 
 
     days.forEach(day => {
@@ -2758,65 +3062,738 @@ function renderStudyChart() {
 
         column.type = 'button';
         column.className =
-            'study-chart-column';
+            'study-trend-column';
 
 
-        const percent =
-            day.seconds / maxSeconds;
+        // -------------------------
+        // 背景：当天总学习时长
+        // -------------------------
 
-
-        const bar =
+        const volume =
             document.createElement('div');
 
-        bar.className =
-            'study-chart-bar';
+        volume.className =
+            'study-volume-bar';
 
-        bar.style.height =
+        volume.style.height =
             `${Math.max(
-                day.seconds > 0 ? 8 : 2,
-                percent * 100
+                day.seconds > 0 ? 4 : 0,
+                day.seconds /
+                maxSeconds *
+                100
             )}%`;
 
+        column.appendChild(volume);
+
+
+        // -------------------------
+        // 前景：真实学习时间
+        // -------------------------
+
+        day.sessions.forEach(session => {
+
+            const start =
+                new Date(
+                    session.start_time
+                );
+
+            const end =
+                new Date(
+                    session.end_time
+                );
+
+
+            const startMinutes =
+                start.getHours() * 60 +
+                start.getMinutes() +
+                start.getSeconds() / 60;
+
+
+            let endMinutes;
+
+            if (
+                isSameLocalDay(
+                    start,
+                    end
+                )
+            ) {
+
+                endMinutes =
+                    end.getHours() * 60 +
+                    end.getMinutes() +
+                    end.getSeconds() / 60;
+
+            } else {
+
+                // 跨午夜：
+                // 当前这一天画到 24:00
+                endMinutes = 1440;
+            }
+
+
+            const block =
+                document.createElement('div');
+
+            block.className =
+                'study-time-block';
+
+
+            block.style.top =
+                `${startMinutes / 1440 * 100}%`;
+
+
+            block.style.height =
+                `${Math.max(
+                    (
+                        endMinutes -
+                        startMinutes
+                    ) /
+                    1440 *
+                    100,
+                    0.8
+                )}%`;
+
+
+            const middleHour =
+                (
+                    startMinutes +
+                    endMinutes
+                ) /
+                120;
+
+
+            block.style.background =
+                getStudyTimeColor(
+                    middleHour
+                );
+
+
+            column.appendChild(block);
+        });
+
+
+        // -------------------------
+        // 日期
+        // -------------------------
 
         const label =
             document.createElement('span');
 
         label.className =
-            'study-chart-label';
+            'study-trend-label';
 
+        label.textContent =
+            `${day.start.getMonth() + 1}/${day.start.getDate()}`;
 
-        if (studyChartDays <= 7) {
-
-            label.textContent =
-                day.date.toLocaleDateString(
-                    currentLang === 'ja'
-                        ? 'ja-JP'
-                        : 'en-US',
-                    {
-                        weekday: 'short'
-                    }
-                );
-
-        } else {
-
-            label.textContent =
-                `${day.date.getMonth() + 1}/${day.date.getDate()}`;
-        }
-
-
-        column.appendChild(bar);
         column.appendChild(label);
 
 
         column.addEventListener(
             'click',
             () =>
-                showStudyChartDetail(day)
+                showStudyChartDetail({
+                    date: day.start,
+                    sessions:
+                        day.sessions,
+                    seconds:
+                        day.seconds
+                })
         );
 
 
-                chart.appendChild(column);
+        grid.appendChild(column);
     });
+}
+
+
+function renderStudyChartMonthly() {
+
+    const sessions =
+        getFilteredStudySessions();
+
+    const now =
+        new Date();
+
+    const months = [];
+
+
+    // 最近6个自然月
+    for (let i = 5; i >= 0; i--) {
+
+        const start =
+            new Date(
+                now.getFullYear(),
+                now.getMonth() - i,
+                1
+            );
+
+        const end =
+            new Date(
+                start.getFullYear(),
+                start.getMonth() + 1,
+                1
+            );
+
+
+        const monthSessions =
+            sessions.filter(session =>
+                sessionIsInRange(
+                    session,
+                    start,
+                    end
+                )
+            );
+
+
+        // Mon → Sun
+        const weekdaySeconds =
+            Array(7).fill(0);
+
+
+        monthSessions.forEach(session => {
+
+            const date =
+                new Date(
+                    session.start_time
+                );
+
+            // JS:
+            // Sun=0
+            // Mon=1
+            //
+            // 转成：
+            // Mon=0 ... Sun=6
+            const weekday =
+                (date.getDay() + 6) % 7;
+
+            weekdaySeconds[weekday] +=
+                Number(
+                    session.duration_seconds
+                ) || 0;
+        });
+
+
+        months.push({
+            start,
+            end,
+            sessions:
+                monthSessions,
+            seconds:
+                sumStudySeconds(
+                    monthSessions
+                ),
+            weekdaySeconds
+        });
+    }
+
+
+    const allWeekdayValues =
+        months.flatMap(
+            month =>
+                month.weekdaySeconds
+        );
+
+
+    const maxWeekdaySeconds =
+        Math.max(
+            ...allWeekdayValues,
+            1
+        );
+
+
+    const maxMonthSeconds =
+        Math.max(
+            ...months.map(
+                month =>
+                    month.seconds
+            ),
+            1
+        );
+
+
+    const ja =
+        currentLang === 'ja';
+
+
+    const names =
+        ja
+            ? ['月','火','水','木','金','土','日']
+            : ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+
+    const axisLabels =
+        names.map(
+            (name, index) => ({
+                position:
+                    (index + 0.5) / 7,
+                label: name
+            })
+        );
+
+
+    const grid =
+        createTrendBase(
+            months,
+            axisLabels
+        );
+
+
+    months.forEach(month => {
+
+        const column =
+            document.createElement('button');
+
+        column.type = 'button';
+
+        column.className =
+            'study-trend-column';
+
+
+        // 背景：整月学习量
+        const volume =
+            document.createElement('div');
+
+        volume.className =
+            'study-volume-bar';
+
+        volume.style.height =
+            `${Math.max(
+                month.seconds > 0 ? 4 : 0,
+                month.seconds /
+                maxMonthSeconds *
+                100
+            )}%`;
+
+        column.appendChild(volume);
+
+
+        // 前景：
+        // Mon → Sun
+        month.weekdaySeconds.forEach(
+            (seconds, index) => {
+
+                if (seconds <= 0) {
+                    return;
+                }
+
+
+                const block =
+                    document.createElement('div');
+
+                block.className =
+                    'study-heat-block';
+
+
+                block.style.top =
+                    `${index / 7 * 100}%`;
+
+                block.style.height =
+                    `${1 / 7 * 100}%`;
+
+
+                const strength =
+                    seconds /
+                    maxWeekdaySeconds;
+
+
+                block.style.opacity =
+                    String(
+                        0.18 +
+                        strength * 0.72
+                    );
+
+
+                column.appendChild(
+                    block
+                );
+            }
+        );
+
+
+        const label =
+            document.createElement('span');
+
+        label.className =
+            'study-trend-label';
+
+
+        label.textContent =
+            month.start.toLocaleDateString(
+                currentLang === 'ja'
+                    ? 'ja-JP'
+                    : 'en-US',
+                {
+                    month: 'short'
+                }
+            );
+
+
+        column.appendChild(label);
+
+
+        column.addEventListener(
+            'click',
+            () => {
+
+                const detail =
+                    document.getElementById(
+                        'study-chart-detail'
+                    );
+
+                if (!detail) return;
+
+
+                const monthText =
+                    month.start.toLocaleDateString(
+                        currentLang === 'ja'
+                            ? 'ja-JP'
+                            : 'en-US',
+                        {
+                            year: 'numeric',
+                            month: 'long'
+                        }
+                    );
+
+
+                detail.innerHTML =
+                    `<b>${monthText}</b> · ` +
+                    `${formatAnalyticsTime(month.seconds)} · ` +
+                    (
+                        currentLang === 'ja'
+                            ? `${month.sessions.length}回`
+                            : `${month.sessions.length} sessions`
+                    );
+            }
+        );
+
+
+        grid.appendChild(column);
+    });
+}
+
+
+function renderStudyChartQuarterly() {
+
+    const sessions =
+        getFilteredStudySessions();
+
+    const now =
+        new Date();
+
+    const currentQuarter =
+        Math.floor(
+            now.getMonth() / 3
+        );
+
+
+    const currentQuarterStart =
+        new Date(
+            now.getFullYear(),
+            currentQuarter * 3,
+            1
+        );
+
+
+    const quarters = [];
+
+
+    for (let i = 3; i >= 0; i--) {
+
+        const start =
+            new Date(
+                currentQuarterStart.getFullYear(),
+                currentQuarterStart.getMonth() -
+                    i * 3,
+                1
+            );
+
+
+        const end =
+            new Date(
+                start.getFullYear(),
+                start.getMonth() + 3,
+                1
+            );
+
+
+        const dayCount =
+            Math.round(
+                (end - start) /
+                86400000
+            );
+
+
+        const dailySeconds =
+            Array(dayCount).fill(0);
+
+
+        const quarterSessions =
+            sessions.filter(session =>
+                sessionIsInRange(
+                    session,
+                    start,
+                    end
+                )
+            );
+
+
+        quarterSessions.forEach(
+            session => {
+
+                const date =
+                    localDayStart(
+                        new Date(
+                            session.start_time
+                        )
+                    );
+
+
+                const index =
+                    Math.round(
+                        (date - start) /
+                        86400000
+                    );
+
+
+                if (
+                    index >= 0 &&
+                    index < dayCount
+                ) {
+
+                    dailySeconds[index] +=
+                        Number(
+                            session.duration_seconds
+                        ) || 0;
+                }
+            }
+        );
+
+
+        quarters.push({
+            start,
+            end,
+            dayCount,
+            dailySeconds,
+            sessions:
+                quarterSessions,
+            seconds:
+                sumStudySeconds(
+                    quarterSessions
+                )
+        });
+    }
+
+
+    const maxDailySeconds =
+        Math.max(
+            ...quarters.flatMap(
+                quarter =>
+                    quarter.dailySeconds
+            ),
+            1
+        );
+
+
+    const maxQuarterSeconds =
+        Math.max(
+            ...quarters.map(
+                quarter =>
+                    quarter.seconds
+            ),
+            1
+        );
+
+
+    const axisLabels = [
+        {
+            position: 0,
+            label:
+                currentLang === 'ja'
+                    ? '開始'
+                    : 'Start'
+        },
+        {
+            position: 1 / 3,
+            label: 'M2'
+        },
+        {
+            position: 2 / 3,
+            label: 'M3'
+        },
+        {
+            position: 1,
+            label:
+                currentLang === 'ja'
+                    ? '終了'
+                    : 'End'
+        }
+    ];
+
+
+    const grid =
+        createTrendBase(
+            quarters,
+            axisLabels
+        );
+
+
+    quarters.forEach(quarter => {
+
+        const column =
+            document.createElement('button');
+
+        column.type = 'button';
+
+        column.className =
+            'study-trend-column';
+
+
+        // 背景：季度总学习量
+        const volume =
+            document.createElement('div');
+
+        volume.className =
+            'study-volume-bar';
+
+        volume.style.height =
+            `${Math.max(
+                quarter.seconds > 0 ? 4 : 0,
+                quarter.seconds /
+                maxQuarterSeconds *
+                100
+            )}%`;
+
+        column.appendChild(volume);
+
+
+        // 前景：季度中的每一天
+        quarter.dailySeconds.forEach(
+            (seconds, index) => {
+
+                if (seconds <= 0) {
+                    return;
+                }
+
+
+                const block =
+                    document.createElement('div');
+
+                block.className =
+                    'study-heat-block';
+
+
+                block.style.top =
+                    `${index /
+                    quarter.dayCount *
+                    100}%`;
+
+
+                block.style.height =
+                    `${Math.max(
+                        100 /
+                        quarter.dayCount,
+                        0.7
+                    )}%`;
+
+
+                const strength =
+                    seconds /
+                    maxDailySeconds;
+
+
+                block.style.opacity =
+                    String(
+                        0.15 +
+                        strength * 0.75
+                    );
+
+
+                column.appendChild(
+                    block
+                );
+            }
+        );
+
+
+        const quarterNumber =
+            Math.floor(
+                quarter.start.getMonth() /
+                3
+            ) + 1;
+
+
+        const label =
+            document.createElement('span');
+
+        label.className =
+            'study-trend-label';
+
+        label.textContent =
+            `${quarter.start.getFullYear()} Q${quarterNumber}`;
+
+        column.appendChild(label);
+
+
+        column.addEventListener(
+            'click',
+            () => {
+
+                const detail =
+                    document.getElementById(
+                        'study-chart-detail'
+                    );
+
+                if (!detail) return;
+
+
+                detail.innerHTML =
+                    `<b>${quarter.start.getFullYear()} Q${quarterNumber}</b> · ` +
+                    `${formatAnalyticsTime(quarter.seconds)} · ` +
+                    (
+                        currentLang === 'ja'
+                            ? `${quarter.sessions.length}回`
+                            : `${quarter.sessions.length} sessions`
+                    );
+            }
+        );
+
+
+        grid.appendChild(column);
+    });
+}
+
+
+function renderStudyChart() {
+
+    const detail =
+        document.getElementById(
+            'study-chart-detail'
+        );
+
+    if (detail) {
+        detail.innerHTML = '';
+    }
+
+
+    if (
+        studyChartRange === 'monthly'
+    ) {
+
+        renderStudyChartMonthly();
+        return;
+    }
+
+
+    if (
+        studyChartRange === 'quarterly'
+    ) {
+
+        renderStudyChartQuarterly();
+        return;
+    }
+
+
+    renderStudyChart7D();
 }
 
 
@@ -2873,10 +3850,9 @@ function setupStudyAnalyticsControls() {
                 'click',
                 () => {
 
-                    studyChartDays =
-                        Number(
-                            button.dataset.days
-                        ) || 7;
+                    studyChartRange =
+                        button.dataset.range ||
+                        '7d';
 
 
                     document
