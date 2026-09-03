@@ -973,7 +973,169 @@ export default {
     // -----------------------------
     // 其他请求继续返回静态网站
     // -----------------------------
+// ============================================================
+// Study Timer API
+// ============================================================
 
+// 获取当前正在计时的 session
+if (request.method === 'GET' && url.pathname === '/api/study/active') {
+    const user = await getCurrentUser(request, env);
+    if (!user) {
+        return jsonResponse(
+            { ok: false, error: 'Unauthorized' },
+            401
+        );
+    }
+
+    const session = await env.DB.prepare(`
+        SELECT
+            id,
+            start_time,
+            end_time,
+            duration_seconds,
+            lang,
+            source
+        FROM study_sessions
+        WHERE user_id = ?
+          AND end_time IS NULL
+        ORDER BY start_time DESC
+        LIMIT 1
+    `).bind(user.id).first();
+
+    return jsonResponse({
+        ok: true,
+        session: session || null
+    });
+}
+
+
+// 开始计时
+if (request.method === 'POST' && url.pathname === '/api/study/start') {
+    const user = await getCurrentUser(request, env);
+    if (!user) {
+        return jsonResponse(
+            { ok: false, error: 'Unauthorized' },
+            401
+        );
+    }
+
+    const body = await request.json();
+    const lang = body.lang === 'ja' ? 'ja' : 'en';
+
+    // 防止同一个账号同时启动两个计时器
+    const existing = await env.DB.prepare(`
+        SELECT id, start_time, lang
+        FROM study_sessions
+        WHERE user_id = ?
+          AND end_time IS NULL
+        ORDER BY start_time DESC
+        LIMIT 1
+    `).bind(user.id).first();
+
+    if (existing) {
+        return jsonResponse({
+            ok: true,
+            session: existing,
+            already_active: true
+        });
+    }
+
+    const id = crypto.randomUUID();
+    const startTime = new Date().toISOString();
+
+    await env.DB.prepare(`
+        INSERT INTO study_sessions (
+            id,
+            user_id,
+            start_time,
+            end_time,
+            duration_seconds,
+            lang,
+            source,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, NULL, NULL, ?, 'timer', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `).bind(
+        id,
+        user.id,
+        startTime,
+        lang
+    ).run();
+
+    return jsonResponse({
+        ok: true,
+        session: {
+            id,
+            start_time: startTime,
+            end_time: null,
+            duration_seconds: null,
+            lang,
+            source: 'timer'
+        }
+    });
+}
+
+
+// 停止计时
+if (request.method === 'POST' && url.pathname === '/api/study/stop') {
+    const user = await getCurrentUser(request, env);
+    if (!user) {
+        return jsonResponse(
+            { ok: false, error: 'Unauthorized' },
+            401
+        );
+    }
+
+    const session = await env.DB.prepare(`
+        SELECT id, start_time
+        FROM study_sessions
+        WHERE user_id = ?
+          AND end_time IS NULL
+        ORDER BY start_time DESC
+        LIMIT 1
+    `).bind(user.id).first();
+
+    if (!session) {
+        return jsonResponse(
+            { ok: false, error: 'No active study session' },
+            400
+        );
+    }
+
+    const endTime = new Date();
+    const startTime = new Date(session.start_time);
+
+    const durationSeconds = Math.max(
+        0,
+        Math.floor((endTime.getTime() - startTime.getTime()) / 1000)
+    );
+
+    await env.DB.prepare(`
+        UPDATE study_sessions
+        SET
+            end_time = ?,
+            duration_seconds = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+          AND user_id = ?
+    `).bind(
+        endTime.toISOString(),
+        durationSeconds,
+        session.id,
+        user.id
+    ).run();
+
+    return jsonResponse({
+        ok: true,
+        session: {
+            id: session.id,
+            start_time: session.start_time,
+            end_time: endTime.toISOString(),
+            duration_seconds: durationSeconds
+        }
+    });
+}
     return env.ASSETS.fetch(request);
   }
 };
