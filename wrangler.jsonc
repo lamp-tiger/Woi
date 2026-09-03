@@ -9,5 +9,13 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
-  }
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "woi-db",
+      "database_id": "8fe92b99-5fde-47f4-8e0a-d5a542a48db9"
+    }
+  ]
 }
