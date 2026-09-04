@@ -1435,8 +1435,8 @@ SUPABASE 数据库表结构说明
 
 <script>
 
-const SUPABASE_URL = '你的 Supabase Project URL';
-const SUPABASE_ANON_KEY = '你的 Supabase anon key';
+const SUPABASE_URL = 'https://mxxunemkxskziyzuxmfq.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_Jd2RZflRrZJQEqT19Mlhjw_CRDrzdQ0';
 
 const sb = window.supabase.createClient(
     SUPABASE_URL,
@@ -1630,22 +1630,11 @@ let currentUser = null;
     // 如果当前正在计时，切换语言前先自动停止
     if (activeStudySession) {
         try {
-            const r = await fetch('/api/study/stop', {
-                method: 'POST',
-                credentials: 'same-origin'
-            });
-
-            if (!r.ok) {
-                throw new Error(await r.text());
-            }
-
-            activeStudySession = null;
-
+            await stopStudyTimer();
         } catch (e) {
             console.error('切换语言时停止计时失败:', e);
 
-            // 停止失败就不要切语言，
-            // 避免把学习时间记错
+            // 停止失败就不要切语言，避免把学习时间记错
             alert(
                 currentLang === 'ja'
                     ? 'タイマーを停止できませんでした。もう一度お試しください。'
@@ -1862,93 +1851,124 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
 async function syncWordToCloud(wordObj) {
     try {
         const lang = detectWordLanguage(wordObj.word);
+        const table = lang === 'ja' ? 'vocab_gois' : 'vocab_words';
+        const row = {
+            id: wordObj.id,
+            user_id: currentUser.id,
+            word: wordObj.word,
+            orig_jp: wordObj.origJP || null,
+            gen_jp: wordObj.genJP || null,
+            orig_cn: wordObj.origCN || null,
+            gen_cn: wordObj.genCN || null,
+            status: wordObj.status || 'new',
+            next_time: wordObj.nextTime ? new Date(wordObj.nextTime).toISOString() : null,
+            review_count: wordObj.count || 0,
+            deleted: !!wordObj.deleted
+        };
 
-        const r = await fetch('/api/vocab', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                lang: lang,
-                id: wordObj.id,
-                word: wordObj.word,
-                orig_jp: wordObj.origJP || null,
-                gen_jp: wordObj.genJP || null,
-                orig_cn: wordObj.origCN || null,
-                gen_cn: wordObj.genCN || null,
-                status: wordObj.status || 'new',
-                next_time: wordObj.nextTime
-                    ? new Date(wordObj.nextTime).toISOString()
-                    : new Date().toISOString(),
-                review_count: wordObj.count || 0,
-                deleted: !!wordObj.deleted
-            })
-        });
+        const { error } = await sb
+            .from(table)
+            .upsert(row);
 
-        if (r.status === 401) {
-            throw new Error('登录已失效，请重新登录');
-        }
-
-        if (!r.ok) {
-            throw new Error(await r.text());
-        }
-
-    } catch(e) {
-        console.error("同步失败:", e);
-        alert("单词同步失败: " + e.message);
+        if (error) throw error;
+    } catch (e) {
+        console.error('同步失败:', e);
+        alert('单词同步失败: ' + e.message);
     }
 }
 
     // --- 加载学习资源 ---
     async function loadResources() {
-        try {
-            const r = await fetch(`/api/resources?lang=${currentLang}`, { credentials: 'same-origin' });
-            if (!r.ok) throw new Error(await r.text());
-            const result = await r.json();
-            favLinks = (result.resources || []).map(x => ({ id: x.id, name: x.name, url: x.url }));
-            renderLinks();
-        } catch(e) { console.error("加载资源失败:", e); favLinks = []; renderLinks(); }
+    try {
+        const { data, error } = await sb
+            .from('learning_resources')
+            .select('id,name,url')
+            .eq('user_id', currentUser.id)
+            .eq('lang', currentLang);
+
+        if (error) throw error;
+
+        favLinks = (data || []).map(x => ({ id: x.id, name: x.name, url: x.url }));
+        renderLinks();
+    } catch(e) {
+        console.error('加载资源失败:', e);
+        favLinks = [];
+        renderLinks();
     }
+}
 
 
     // --- 保存学习资源 ---
     async function saveResourceToCloud(name, url) {
-        const r = await fetch('/api/resources', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ lang:currentLang, id:crypto.randomUUID(), name, url }) });
-        if (!r.ok) throw new Error(await r.text());
-    }
+    const { error } = await sb
+        .from('learning_resources')
+        .insert({
+            id: crypto.randomUUID(),
+            user_id: currentUser.id,
+            lang: currentLang,
+            name,
+            url
+        });
+
+    if (error) throw error;
+}
 
 
     // --- 删除学习资源 ---
     async function deleteResourceFromCloud(id) {
-        const r = await fetch(`/api/resources/${encodeURIComponent(id)}`, { method:'DELETE', credentials:'same-origin' });
-        if (!r.ok) throw new Error(await r.text());
-    }
+    const { error } = await sb
+        .from('learning_resources')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', currentUser.id);
+
+    if (error) throw error;
+}
 
 
     // --- 加载提示词 ---
     async function loadPrompt() {
-        try {
-            const r = await fetch(`/api/prompt?lang=${currentLang}`, { credentials:'same-origin' });
-            if (!r.ok) throw new Error(await r.text());
-            const result = await r.json();
-            customPrompt = result.prompt?.prompt_text || DEFAULT_PROMPTS[currentLang];
-        } catch(e) { console.error("加载提示词失败:", e); customPrompt = DEFAULT_PROMPTS[currentLang]; }
-        document.getElementById('prompt-content').value = customPrompt;
+    try {
+        const { data: row, error } = await sb
+            .from('ai_prompts')
+            .select('prompt_text')
+            .eq('user_id', currentUser.id)
+            .eq('lang', currentLang)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        customPrompt = row?.prompt_text || DEFAULT_PROMPTS[currentLang];
+    } catch(e) {
+        console.error('加载提示词失败:', e);
+        customPrompt = DEFAULT_PROMPTS[currentLang];
     }
+
+    document.getElementById('prompt-content').value = customPrompt;
+}
 
 
     // --- 保存提示词 ---
     async function savePromptToCloud() {
-        try {
-            const promptText = document.getElementById('prompt-content').value.trim();
-            if (!promptText) { alert(currentLang === 'ja' ? 'プロンプトを空にできません' : 'Prompt cannot be empty'); return; }
-            const r = await fetch('/api/prompt', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ lang:currentLang, prompt_text:promptText }) });
-            if (!r.ok) throw new Error(await r.text());
-            customPrompt = promptText;
-            alert(t('saved'));
-        } catch(e) { console.error("保存提示词失败:", e); alert("保存失败: " + e.message); }
-    }
+    try {
+        const promptText = document.getElementById('prompt-content').value.trim();
+        if (!promptText) { alert(currentLang === 'ja' ? 'プロンプトを空にできません' : 'Prompt cannot be empty'); return; }
+
+        const { error } = await sb
+            .from('ai_prompts')
+            .upsert({
+                user_id: currentUser.id,
+                lang: currentLang,
+                prompt_text: promptText,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,lang' });
+
+        if (error) throw error;
+
+        customPrompt = promptText;
+        alert(t('saved'));
+    } catch(e) { console.error('保存提示词失败:', e); alert('保存失败: ' + e.message); }
+}
 
 // ============================================================
 // 学习计时器
@@ -2066,21 +2086,19 @@ function renderStudyTimer() {
 // 页面打开时查询有没有正在计时
 async function loadActiveStudySession() {
     try {
+        const { data: session, error } = await sb
+            .from('study_sessions')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .is('end_time', null)
+            .order('start_time', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-        const r = await fetch('/api/study/active', {
-            credentials: 'same-origin'
-        });
+        if (error) throw error;
 
-        if (!r.ok) {
-            throw new Error(await r.text());
-        }
-
-        const result = await r.json();
-
-        activeStudySession = result.session || null;
-
+        activeStudySession = session || null;
         renderStudyTimer();
-
     } catch (e) {
         console.error('加载学习计时器失败:', e);
     }
@@ -2095,107 +2113,76 @@ async function startStudyTimer() {
     // -------------------------
 
     const optimisticSession = {
-        id: 'pending',
+        id: crypto.randomUUID(),
+        user_id: currentUser.id,
         lang: currentLang,
-        start_time:
-            new Date().toISOString(),
+        start_time: new Date().toISOString(),
         end_time: null,
-        duration_seconds: null
+        duration_seconds: null,
+        source: 'timer'
     };
 
-
-    activeStudySession =
-        optimisticSession;
-
+    activeStudySession = optimisticSession;
     renderStudyTimer();
-
 
     // -------------------------
     // 后台再真正保存
     // -------------------------
 
     try {
+        const { data: session, error } = await sb
+            .from('study_sessions')
+            .insert(optimisticSession)
+            .select('*')
+            .single();
 
-        const r =
-            await fetch(
-                '/api/study/start',
-                {
-                    method: 'POST',
+        if (error) throw error;
 
-                    headers: {
-                        'Content-Type':
-                            'application/json'
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    body:
-                        JSON.stringify({
-                            lang: currentLang
-                        })
-                }
-            );
-
-
-        if (!r.ok) {
-            throw new Error(
-                await r.text()
-            );
-        }
-
-
-        const result =
-            await r.json();
-
-
-        // 用服务器时间校准
-        activeStudySession =
-            result.session;
-
+        activeStudySession = session;
         renderStudyTimer();
-
-
     } catch (e) {
-
-        // 保存失败才撤销
+        console.error('开始计时失败:', e);
         activeStudySession = null;
-
         renderStudyTimer();
-
-        console.error(
-            '开始计时失败:',
-            e
-        );
-
-        alert(
-            'Start timer failed: ' +
-            e.message
-        );
+        alert('Start timer failed: ' + e.message);
     }
 }
 
 
 // 停止
 async function stopStudyTimer() {
+    const session = activeStudySession;
+    if (!session) return;
+
     try {
+        const endTime = new Date();
+        const durationSeconds = Math.max(
+            0,
+            Math.round((endTime.getTime() - new Date(session.start_time).getTime()) / 1000)
+        );
 
-        const r = await fetch('/api/study/stop', {
-            method: 'POST',
-            credentials: 'same-origin'
-        });
+        const { error } = await sb
+            .from('study_sessions')
+            .update({
+                end_time: endTime.toISOString(),
+                duration_seconds: durationSeconds,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', session.id)
+            .eq('user_id', currentUser.id);
 
-        if (!r.ok) {
-            throw new Error(await r.text());
-        }
+        if (error) throw error;
 
         activeStudySession = null;
-
         renderStudyTimer();
-
+        await loadStudyHistory();
     } catch (e) {
         console.error('停止计时失败:', e);
+        activeStudySession = session;
+        renderStudyTimer();
+        await loadActiveStudySession();
         alert('Stop timer failed: ' + e.message);
+        throw e;
     }
 }
 
@@ -2536,25 +2523,19 @@ let studyChartLang = 'all';
 async function loadStudyHistory() {
 
     try {
+        const { data, error } = await sb
+            .from('study_sessions')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .not('end_time', 'is', null)
+            .order('start_time', { ascending: false });
 
-        const response = await fetch('/api/study/history');
+        if (error) throw error;
 
-        if (!response.ok) {
-            throw new Error('Failed to load study history');
-        }
-
-        const data = await response.json();
-
-        studyHistory = Array.isArray(data.sessions)
-            ? data.sessions
-            : [];
-
+        studyHistory = data || [];
         renderStudyAnalytics();
-
     } catch (error) {
-
         console.error('Load study history failed:', error);
-
         studyHistory = [];
         renderStudyAnalytics();
     }
@@ -4238,36 +4219,18 @@ async function deleteStudySession(id) {
         return;
     }
 
-
     try {
+        const { error } = await sb
+            .from('study_sessions')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', currentUser.id);
 
-        const response = await fetch(
-            `/api/study/history/${encodeURIComponent(id)}`,
-            {
-                method: 'DELETE',
-                credentials: 'same-origin'
-            }
-        );
+        if (error) throw error;
 
-
-        if (!response.ok) {
-            throw new Error(
-                await response.text()
-            );
-        }
-
-
-        // 删除成功后重新读取 D1
         await loadStudyHistory();
-
-
     } catch (error) {
-
-        console.error(
-            'Delete study session failed:',
-            error
-        );
-
+        console.error('Delete study session failed:', error);
         alert(
             currentLang === 'ja'
                 ? '削除に失敗しました'
@@ -4327,32 +4290,11 @@ function closeStudyAddModal() {
 
 async function saveManualStudySession() {
 
-    const lang =
-        document.getElementById(
-            'study-add-lang'
-        ).value;
-
-    const endText =
-        document.getElementById(
-            'study-add-end'
-        ).value;
-
-    const hours =
-        Number(
-            document.getElementById(
-                'study-add-hours'
-            ).value
-        );
-
-    const minutes =
-        Number(
-            document.getElementById(
-                'study-add-minutes'
-            ).value
-        );
-
-    const durationSeconds =
-        (hours * 60 + minutes) * 60;
+    const lang = document.getElementById('study-add-lang').value;
+    const endText = document.getElementById('study-add-end').value;
+    const hours = Number(document.getElementById('study-add-hours').value || 0);
+    const minutes = Number(document.getElementById('study-add-minutes').value || 0);
+    const durationSeconds = (hours * 60 + minutes) * 60;
 
     if (durationSeconds <= 0) {
         alert(
@@ -4390,47 +4332,24 @@ async function saveManualStudySession() {
     );
 
     try {
+        const { error } = await sb
+            .from('study_sessions')
+            .insert({
+                id: crypto.randomUUID(),
+                user_id: currentUser.id,
+                start_time: startDate.toISOString(),
+                end_time: endDate.toISOString(),
+                duration_seconds: durationSeconds,
+                lang: lang,
+                source: 'manual'
+            });
 
-        const response =
-            await fetch(
-                '/api/study/manual',
-                {
-                    method: 'POST',
-
-                    headers: {
-                        'Content-Type':
-                            'application/json'
-                    },
-
-                    credentials:
-                        'same-origin',
-
-                    body: JSON.stringify({
-                        lang,
-                        start_time:
-                            startDate.toISOString(),
-                        end_time:
-                            endDate.toISOString()
-                    })
-                }
-            );
-
-        if (!response.ok) {
-            throw new Error(
-                await response.text()
-            );
-        }
+        if (error) throw error;
 
         closeStudyAddModal();
         await loadStudyHistory();
-
     } catch (error) {
-
-        console.error(
-            'Add study session failed:',
-            error
-        );
-
+        console.error('Add study session failed:', error);
         alert(
             currentLang === 'ja'
                 ? '追加に失敗しました'
@@ -4488,40 +4407,26 @@ async function saveManualStudySession() {
     // --- 加载单词 ---
     async function loadWords() {
     try {
-        // 只读取当前语言，并通过 Worker 自动识别当前登录用户
-        const r = await fetch(`/api/vocab?lang=${currentLang}`, {
-            credentials: 'same-origin'
-        });
+        const table = currentLang === 'ja' ? 'vocab_gois' : 'vocab_words';
+        const { data, error } = await sb
+            .from(table)
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .eq('deleted', false);
 
-        if (r.status === 401) {
-            throw new Error('登录已失效，请重新登录');
-        }
+        if (error) throw error;
 
-        if (!r.ok) {
-            throw new Error(await r.text());
-        }
-
-        const result = await r.json();
-        const data = result.words || [];
-
-        words = data.map(w => ({
+        words = (data || []).map(w => ({
             ...w,
             origJP: w.orig_jp,
             genJP: w.gen_jp,
             origCN: w.orig_cn,
             genCN: w.gen_cn,
-            nextTime: w.next_time
-                ? new Date(w.next_time).getTime()
-                : Date.now(),
-            count: w.review_count || 0,
-            deleted: !!w.deleted
+            nextTime: w.next_time ? new Date(w.next_time).getTime() : null,
+            count: w.review_count || 0
         }));
-
-        console.log(`D1 loaded: ${words.length} ${currentLang} words`);
-
-    } catch(e) {
-        console.error("加载词库失败:", e);
-        alert("加载词库失败: " + e.message);
+    } catch (e) {
+        console.error('加载单词失败:', e);
         words = [];
     }
 }
@@ -5210,22 +5115,53 @@ async function saveManualStudySession() {
     }
     
     async function syncDailyLogToCloud() {
-        try {
-            const r = await fetch('/api/daily-stats', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({ lang:currentLang, date_str:dailyLog.date, target_new:settings.new, target_rev:settings.rev, target_rel:settings.rel, actual_new:dailyLog.new, actual_rev:dailyLog.rev, actual_rel:dailyLog.rel }) });
-            if (!r.ok) throw new Error(await r.text());
-        } catch(e) { console.error("同步 daily_stats 失败:", e); }
-    }
+    try {
+        const { error } = await sb
+            .from('daily_stats')
+            .upsert({
+                user_id: currentUser.id,
+                lang: currentLang,
+                date_str: dailyLog.date,
+                target_new: settings.new,
+                target_rev: settings.rev,
+                target_rel: settings.rel,
+                actual_new: dailyLog.new,
+                actual_rev: dailyLog.rev,
+                actual_rel: dailyLog.rel,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id,lang,date_str' });
+
+        if (error) throw error;
+    } catch(e) { console.error('同步 daily_stats 失败:', e); }
+}
 
 
     async function loadDailyLogFromCloud() {
-        try {
-            const today = new Date().toLocaleDateString();
-            const r = await fetch(`/api/daily-stats?lang=${currentLang}&date=${encodeURIComponent(today)}`, { credentials:'same-origin' });
-            if (!r.ok) throw new Error(await r.text());
-            const result = await r.json(); const row = result.stat;
-            if (row) { dailyLog={date:row.date_str,new:row.actual_new||0,rev:row.actual_rev||0,rel:row.actual_rel||0}; if(row.target_new)settings.new=row.target_new; if(row.target_rev)settings.rev=row.target_rev; if(row.target_rel)settings.rel=row.target_rel; }
-        } catch(e) { console.error("加载 daily_stats 失败:", e); }
-    }
+    try {
+        const today = new Date().toLocaleDateString();
+        const { data: row, error } = await sb
+            .from('daily_stats')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .eq('lang', currentLang)
+            .eq('date_str', today)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (row) {
+            dailyLog = {
+                date: row.date_str,
+                new: row.actual_new || 0,
+                rev: row.actual_rev || 0,
+                rel: row.actual_rel || 0
+            };
+            if (row.target_new != null) settings.new = row.target_new;
+            if (row.target_rev != null) settings.rev = row.target_rev;
+            if (row.target_rel != null) settings.rel = row.target_rel;
+        }
+    } catch(e) { console.error('加载 daily_stats 失败:', e); }
+}
 
 
     function finishWord() {
@@ -5258,11 +5194,18 @@ async function saveManualStudySession() {
     // 将当前语言词库在 Supabase 中的有效记录统一标记为 deleted=true。
     // 使用“软删除”而不是物理 DELETE，保持现有数据结构与单词删除逻辑一致。
     async function clearCurrentLanguageCloudWords() {
-        const r = await fetch(`/api/vocab?lang=${currentLang}`, { method:'DELETE', credentials:'same-origin' });
-        if (!r.ok) throw new Error(await r.text());
-        const result = await r.json().catch(() => ({}));
-        return result.deleted || result.count || 0;
-    }
+    const table = currentLang === 'ja' ? 'vocab_gois' : 'vocab_words';
+    const { data, error } = await sb
+        .from(table)
+        .update({ deleted: true })
+        .eq('user_id', currentUser.id)
+        .eq('deleted', false)
+        .select('id');
+
+    if (error) throw error;
+
+    return (data || []).length;
+}
 
 
     async function importData(event) {
