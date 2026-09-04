@@ -1389,6 +1389,7 @@ SUPABASE 数据库表结构说明
     <label style="font-size:13px;">Provider</label>
 <select id="ai-provider" style="padding:8px; width:100%; box-sizing:border-box;" onchange="handleAIProviderChange()">
     <option value="openai">OpenAI</option>
+    <option value="gemini">Google Gemini</option>
     <option value="deepseek">DeepSeek</option>
     <option value="custom">Custom / OpenAI Compatible</option>
 </select>
@@ -1404,6 +1405,8 @@ SUPABASE 数据库表结构说明
 <datalist id="ai-model-options">
     <option value="gpt-5.6-luna"></option>
     <option value="gpt-5.4-mini"></option>
+    <option value="gemini-3.5-flash-lite"></option>
+    <option value="gemini-2.0-flash"></option>
     <option value="deepseek-v4-flash"></option>
     <option value="deepseek-v4-pro"></option>
 </datalist>
@@ -1414,12 +1417,10 @@ SUPABASE 数据库表结构说明
     <option value="chat">Chat Completions</option>
 </select>
 
+<div id="ai-reasoning-row" style="display:flex; flex-direction:column; gap:8px;">
 <label style="font-size:13px;">Reasoning</label>
-<select id="ai-reasoning" style="padding:8px; width:100%; box-sizing:border-box;">
-    <option value="none" selected>Off（默认）</option>
-    <option value="low">Low</option>
-    <option value="high">High（手动选择）</option>
-</select>
+<select id="ai-reasoning" style="padding:8px; width:100%; box-sizing:border-box;"></select>
+</div>
 
 </div>
 
@@ -2078,24 +2079,280 @@ function getImportCountUnit() {
     const MAX_AI_IMPORT_WORDS = 15;
 
     const AI_PROVIDERS = {
-        openai: { label: 'OpenAI', defaultBaseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-5.6-luna', protocol: 'responses' },
-        deepseek: { label: 'DeepSeek', defaultBaseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-v4-flash', protocol: 'responses' },
-        custom: { label: 'Custom / OpenAI Compatible', defaultBaseUrl: '', defaultModel: '', protocol: 'responses' }
+        openai: { label: 'OpenAI', defaultBaseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-5.6-luna', protocol: 'responses', defaultReasoning: 'none' },
+        gemini: { label: 'Google Gemini', defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta', defaultModel: 'gemini-3.5-flash-lite', protocol: 'gemini-native' },
+        deepseek: { label: 'DeepSeek', defaultBaseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-v4-flash', protocol: 'responses', defaultReasoning: 'off' },
+        custom: { label: 'Custom / OpenAI Compatible', defaultBaseUrl: '', defaultModel: '', protocol: 'responses', defaultReasoning: 'none' }
     };
 
-    function getDefaultApiConfig() { const p = AI_PROVIDERS.openai; return { provider: 'openai', baseUrl: p.defaultBaseUrl, apiKey: '', model: p.defaultModel, protocol: p.protocol, reasoning: 'none' }; }
+    const AI_REASONING_OPTIONS = {
+        openai: [
+            { value: 'none', label: 'Off（默认）' },
+            { value: 'low', label: 'Low' },
+            { value: 'high', label: 'High（手动选择）' }
+        ],
+        deepseek: [
+            { value: 'off', label: 'Off' },
+            { value: 'low', label: 'Low' },
+            { value: 'high', label: 'High' },
+            { value: 'max', label: 'Max' }
+        ],
+        custom: [
+            { value: 'none', label: 'Off（默认）' },
+            { value: 'low', label: 'Low' },
+            { value: 'high', label: 'High（手动选择）' }
+        ]
+    };
+
+    function getProviderDefaultConfig(providerKey) {
+        const provider = AI_PROVIDERS[providerKey] || AI_PROVIDERS.openai;
+        const key = AI_PROVIDERS[providerKey] ? providerKey : 'openai';
+        return {
+            provider: key,
+            baseUrl: provider.defaultBaseUrl,
+            apiKey: '',
+            model: provider.defaultModel,
+            protocol: provider.protocol,
+            reasoning: provider.defaultReasoning || 'none'
+        };
+    }
+
+    function getDefaultApiConfig() { return getProviderDefaultConfig('openai'); }
 
     function normalizeBaseUrl(baseUrl) { return (baseUrl || '').trim().replace(/\/+$/, '').replace(/\/(responses|chat\/completions)$/, '').replace(/\/v1\/v1$/, '/v1'); }
 
-    function normalizeLegacyApiConfig(saved) { if (!saved || typeof saved !== 'object') return null; const apiKey = typeof saved.apiKey === 'string' ? saved.apiKey : (typeof saved.key === 'string' ? saved.key : ''); const rawUrl = typeof saved.baseUrl === 'string' ? saved.baseUrl : (typeof saved.url === 'string' ? saved.url : ''); const model = typeof saved.model === 'string' ? saved.model : ''; const reasoning = typeof saved.reasoning === 'string' ? saved.reasoning : 'none'; if (!apiKey && !rawUrl && !model) return null; const provider = rawUrl.includes('deepseek.com') ? 'deepseek' : 'openai'; return { ...getDefaultApiConfig(), provider, baseUrl: normalizeBaseUrl(rawUrl || AI_PROVIDERS[provider].defaultBaseUrl), apiKey, model: model || AI_PROVIDERS[provider].defaultModel, protocol: rawUrl.includes('/chat/completions') ? 'chat' : 'responses', reasoning }; }
+    function normalizeProviderConfig(providerKey, saved = {}) {
+        const defaults = getProviderDefaultConfig(providerKey);
+        const config = { ...defaults, ...(saved || {}) };
+        config.provider = providerKey;
+        config.baseUrl = normalizeBaseUrl(config.baseUrl || defaults.baseUrl);
+        config.apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
+        config.model = config.model || defaults.model;
+        if (providerKey === 'gemini') {
+            config.protocol = 'gemini-native';
+        } else if (providerKey === 'deepseek') {
+            config.protocol = 'responses';
+        } else {
+            config.protocol = config.protocol === 'chat' ? 'chat' : 'responses';
+        }
+        if (providerKey === 'deepseek') {
+            config.reasoning = ['off', 'low', 'high', 'max'].includes(config.reasoning) ? config.reasoning : 'off';
+        } else {
+            config.reasoning = ['none', 'low', 'high'].includes(config.reasoning) ? config.reasoning : (defaults.reasoning || 'none');
+        }
+        return config;
+    }
 
-    function loadApiConfig() { try { const raw = localStorage.getItem(AI_CONFIG_STORAGE_KEY); const saved = raw ? JSON.parse(raw) : null; const legacyRaw = localStorage.getItem(LEGACY_AI_CONFIG_STORAGE_KEY); const migrated = saved || normalizeLegacyApiConfig(legacyRaw ? JSON.parse(legacyRaw) : null); apiConfig = { ...getDefaultApiConfig(), ...(migrated || {}) }; apiConfig.provider = AI_PROVIDERS[apiConfig.provider] ? apiConfig.provider : 'openai'; apiConfig.baseUrl = normalizeBaseUrl(apiConfig.baseUrl || AI_PROVIDERS[apiConfig.provider].defaultBaseUrl); apiConfig.protocol = apiConfig.protocol === 'chat' ? 'chat' : 'responses'; if (!['none', 'low', 'high'].includes(apiConfig.reasoning)) apiConfig.reasoning = 'none'; apiConfig.apiKey = typeof apiConfig.apiKey === 'string' ? apiConfig.apiKey : ''; if (!apiConfig.model) apiConfig.model = AI_PROVIDERS[apiConfig.provider].defaultModel; if (!raw && migrated) { localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig)); localStorage.removeItem(LEGACY_AI_CONFIG_STORAGE_KEY); } } catch (e) { console.error('Failed to load local AI config'); apiConfig = getDefaultApiConfig(); } }
+    function createDefaultAIConfigStore() {
+        return {
+            activeProvider: 'openai',
+            providers: Object.fromEntries(Object.keys(AI_PROVIDERS).map(key => [key, normalizeProviderConfig(key)]))
+        };
+    }
 
-    function renderApiConfigForm() { const provider = document.getElementById('ai-provider'); const baseUrl = document.getElementById('ai-api-url'); const apiKey = document.getElementById('ai-api-key'); const model = document.getElementById('ai-model'); const protocol = document.getElementById('ai-protocol'); const reasoning = document.getElementById('ai-reasoning'); if (!provider || !baseUrl || !apiKey || !model || !protocol || !reasoning) return; provider.value = apiConfig.provider; baseUrl.value = apiConfig.baseUrl || ''; apiKey.value = apiConfig.apiKey || ''; model.value = apiConfig.model || ''; protocol.value = apiConfig.protocol || 'responses'; reasoning.value = apiConfig.reasoning || 'none'; }
+    function normalizeLegacyApiConfig(saved) {
+        if (!saved || typeof saved !== 'object') return null;
+        const apiKey = typeof saved.apiKey === 'string' ? saved.apiKey : (typeof saved.key === 'string' ? saved.key : '');
+        const rawUrl = typeof saved.baseUrl === 'string' ? saved.baseUrl : (typeof saved.url === 'string' ? saved.url : '');
+        const model = typeof saved.model === 'string' ? saved.model : '';
+        if (!apiKey && !rawUrl && !model) return null;
+        let provider = saved.provider || 'openai';
+        if (rawUrl.includes('deepseek.com')) provider = 'deepseek';
+        if (rawUrl.includes('generativelanguage.googleapis.com') || model.startsWith('gemini')) provider = 'gemini';
+        provider = AI_PROVIDERS[provider] ? provider : 'openai';
+        const reasoning = provider === 'deepseek'
+            ? (['off', 'low', 'high', 'max'].includes(saved.reasoning) ? saved.reasoning : (saved.reasoning === 'none' ? 'off' : 'off'))
+            : (typeof saved.reasoning === 'string' ? saved.reasoning : 'none');
+        return normalizeProviderConfig(provider, {
+            baseUrl: normalizeBaseUrl(rawUrl || AI_PROVIDERS[provider].defaultBaseUrl),
+            apiKey,
+            model: model || AI_PROVIDERS[provider].defaultModel,
+            reasoning
+        });
+    }
 
-    function handleAIProviderChange() { const providerKey = document.getElementById('ai-provider').value; const provider = AI_PROVIDERS[providerKey] || AI_PROVIDERS.openai; document.getElementById('ai-api-url').value = provider.defaultBaseUrl; document.getElementById('ai-model').value = provider.defaultModel; document.getElementById('ai-protocol').value = provider.protocol; }
+    function normalizeAIConfigStore(saved) {
+        const store = createDefaultAIConfigStore();
+        if (!saved || typeof saved !== 'object') return store;
+        if (saved.providers && typeof saved.providers === 'object') {
+            store.activeProvider = AI_PROVIDERS[saved.activeProvider] ? saved.activeProvider : 'openai';
+            Object.keys(AI_PROVIDERS).forEach(key => {
+                store.providers[key] = normalizeProviderConfig(key, saved.providers[key]);
+            });
+            return store;
+        }
+        const legacy = normalizeLegacyApiConfig(saved);
+        if (legacy) {
+            store.activeProvider = legacy.provider;
+            store.providers[legacy.provider] = legacy;
+        }
+        return store;
+    }
+
+    function loadApiConfig() {
+        try {
+            const raw = localStorage.getItem(AI_CONFIG_STORAGE_KEY);
+            const saved = raw ? JSON.parse(raw) : null;
+            const legacyRaw = localStorage.getItem(LEGACY_AI_CONFIG_STORAGE_KEY);
+            apiConfigStore = normalizeAIConfigStore(saved || (legacyRaw ? JSON.parse(legacyRaw) : null));
+            apiConfig = apiConfigStore.providers[apiConfigStore.activeProvider];
+            if (!raw || saved?.provider) {
+                localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfigStore));
+                if (legacyRaw) localStorage.removeItem(LEGACY_AI_CONFIG_STORAGE_KEY);
+            }
+        } catch (e) {
+            console.error('Failed to load local AI config');
+            apiConfigStore = createDefaultAIConfigStore();
+            apiConfig = apiConfigStore.providers.openai;
+        }
+    }
+
+    function getCurrentProviderFormConfig(providerKey = document.getElementById('ai-provider').value) {
+        return normalizeProviderConfig(providerKey, {
+            baseUrl: document.getElementById('ai-api-url').value,
+            apiKey: document.getElementById('ai-api-key').value,
+            model: document.getElementById('ai-model').value.trim(),
+            protocol: document.getElementById('ai-api-protocol').value,
+            reasoning: document.getElementById('ai-reasoning').value
+        });
+    }
+
+    function renderReasoningOptions(providerKey) {
+        const row = document.getElementById('ai-reasoning-row');
+        const reasoning = document.getElementById('ai-reasoning');
+        if (!row || !reasoning) return;
+        const options = AI_REASONING_OPTIONS[providerKey] || [];
+        row.style.display = options.length ? 'flex' : 'none';
+        reasoning.innerHTML = options.map(option => '<option value="' + option.value + '">' + option.label + '</option>').join('');
+    }
+
+    function renderApiConfigForm() {
+        const provider = document.getElementById('ai-provider');
+        const baseUrl = document.getElementById('ai-api-url');
+        const apiKey = document.getElementById('ai-api-key');
+        const model = document.getElementById('ai-model');
+        const protocol = document.getElementById('ai-protocol');
+        const reasoning = document.getElementById('ai-reasoning');
+        if (!provider || !baseUrl || !apiKey || !model || !protocol || !reasoning) return;
+        renderReasoningOptions(apiConfig.provider);
+        provider.value = apiConfig.provider;
+        baseUrl.value = apiConfig.baseUrl || '';
+        apiKey.value = apiConfig.apiKey || '';
+        model.value = apiConfig.model || '';
+        protocol.value = apiConfig.protocol || 'responses';
+        reasoning.value = apiConfig.reasoning || (apiConfig.provider === 'deepseek' ? 'off' : 'none');
+    }
+
+    function handleAIProviderChange() {
+        if (apiConfigStore?.providers?.[apiConfig.provider]) {
+            apiConfigStore.providers[apiConfig.provider] = getCurrentProviderFormConfig(apiConfig.provider);
+        }
+        const providerKey = document.getElementById('ai-provider').value;
+        apiConfigStore.activeProvider = providerKey;
+        apiConfig = apiConfigStore.providers[providerKey] || normalizeProviderConfig(providerKey);
+        renderApiConfigForm();
+    }
 
     function buildAIEndpoint(config) { const baseUrl = normalizeBaseUrl(config.baseUrl || AI_PROVIDERS[config.provider]?.defaultBaseUrl || ''); if (!baseUrl) throw new Error('Base URL is empty'); return config.protocol === 'chat' ? baseUrl + '/chat/completions' : baseUrl + '/responses'; }
+
+    function buildGeminiEndpoint(config) {
+        const base = (config.baseUrl || AI_PROVIDERS.gemini.defaultBaseUrl).replace(/\/+$/, '');
+        return base + '/models/' + encodeURIComponent(config.model || AI_PROVIDERS.gemini.defaultModel) + ':generateContent';
+    }
+
+    function fetchWithTimeout(url, options, timeoutMs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+    }
+
+    function extractGeminiText(data) {
+        const texts = [];
+        for (const candidate of data?.candidates || []) {
+            for (const part of candidate?.content?.parts || []) {
+                if (typeof part?.text === 'string') texts.push(part.text);
+            }
+        }
+        return texts.join('
+').trim();
+    }
+
+    async function callGemini(prompt) {
+        const endpoint = buildGeminiEndpoint(apiConfig);
+        const response = await fetchWithTimeout(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiConfig.apiKey },
+            body: JSON.stringify({
+                contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                generationConfig: { maxOutputTokens: 6000 }
+            })
+        }, 90000);
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error('Gemini API ' + response.status + ': ' + text);
+        }
+        const data = await response.json();
+        const output = extractGeminiText(data);
+        if (!output) throw new Error('Gemini returned no text output.');
+        return output;
+    }
+
+    function buildDeepSeekReasoning(value) {
+        switch (value) {
+            case 'off': return { effort: 'none' };
+            case 'low': return { effort: 'low' };
+            case 'high': return { effort: 'high' };
+            case 'max': return { effort: 'max' };
+            default: return { effort: 'none' };
+        }
+    }
+
+    function buildDeepSeekBody(prompt) {
+        return {
+            model: apiConfig.model,
+            input: prompt,
+            reasoning: buildDeepSeekReasoning(apiConfig.reasoning || 'off'),
+            max_output_tokens: 6000,
+            stream: false
+        };
+    }
+
+    async function callDeepSeek(prompt) {
+        const response = await fetchWithTimeout(buildAIEndpoint(apiConfig), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiConfig.apiKey },
+            body: JSON.stringify(buildDeepSeekBody(prompt))
+        }, 90000);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const message = data.error?.message || data.message || response.statusText || 'Request failed';
+            throw new Error('DeepSeek API error (' + response.status + '): ' + message);
+        }
+        const text = extractAIText(data).trim();
+        if (!text) throw new Error('DeepSeek API returned no text');
+        return text;
+    }
+
+    async function callOpenAI(prompt) { return callOpenAICompatible(prompt); }
+
+    async function callOpenAICompatible(prompt) {
+        const response = await fetchWithTimeout(buildAIEndpoint(apiConfig), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiConfig.apiKey },
+            body: JSON.stringify(buildRequestBody(apiConfig.provider, apiConfig, prompt))
+        }, 90000);
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            const message = data.error?.message || data.message || response.statusText || 'Request failed';
+            throw new Error((AI_PROVIDERS[apiConfig.provider]?.label || 'API') + ' API error (' + response.status + '): ' + message);
+        }
+        const text = extractAIText(data).trim();
+        if (!text) throw new Error((AI_PROVIDERS[apiConfig.provider]?.label || 'API') + ' API returned no text');
+        return text;
+    }
+
+    
+
 
     function getDeepSeekVocabularyInstruction() {
         const japaneseGate = currentLang === 'ja' ? `
@@ -2195,13 +2452,43 @@ USER PROMPT AND ORIGINAL TEXT:
 ` + userPrompt + "\n\n下面是需要整理的文本：\n" + userText;
     }
 
-    function buildRequestBody(provider, config, prompt) { if (config.protocol === 'chat') return { model: config.model, messages: [{ role: 'user', content: prompt }] }; const body = { model: config.model, input: prompt }; if (['openai', 'deepseek'].includes(provider) && config.reasoning && config.reasoning !== 'none') body.reasoning = { effort: config.reasoning }; return body; }
+    function buildRequestBody(provider, config, prompt) {
+        if (config.protocol === 'chat') return { model: config.model, messages: [{ role: 'user', content: prompt }] };
+        const body = { model: config.model, input: prompt };
+        if (provider === 'openai' && config.reasoning && config.reasoning !== 'none') body.reasoning = { effort: config.reasoning };
+        return body;
+    }
 
-    function extractAIText(responseJson) { if (!responseJson) return ''; if (typeof responseJson.output_text === 'string') return responseJson.output_text; if (Array.isArray(responseJson.output)) { return responseJson.output.map(item => { if (typeof item.content === 'string') return item.content; if (!Array.isArray(item.content)) return ''; return item.content.map(part => part.text || part.output_text || '').join(''); }).join(''); } return responseJson.choices?.[0]?.message?.content || responseJson.choices?.[0]?.text || ''; }
+    function extractAIText(responseJson) {
+        if (!responseJson) return '';
+        if (typeof responseJson.output_text === 'string') return responseJson.output_text;
+        if (Array.isArray(responseJson.output)) {
+            return responseJson.output.map(item => {
+                if (typeof item.content === 'string') return item.content;
+                if (!Array.isArray(item.content)) return '';
+                return item.content.map(part => part.text || part.output_text || '').join('');
+            }).join('');
+        }
+        return responseJson.choices?.[0]?.message?.content || responseJson.choices?.[0]?.text || '';
+    }
 
-    async function callAI(prompt, configOverride = apiConfig) { const config = { ...configOverride, baseUrl: normalizeBaseUrl(configOverride.baseUrl) }; const provider = AI_PROVIDERS[config.provider] ? config.provider : 'custom'; const endpoint = buildAIEndpoint(config); const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(buildRequestBody(provider, config, prompt)) }); const data = await res.json().catch(() => ({})); if (!res.ok) { const message = data.error?.message || data.message || res.statusText || 'Request failed'; throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API error (' + res.status + '): ' + message); } const text = extractAIText(data).trim(); if (!text) throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API returned no text'); return text; }
+    async function callAI(prompt) {
+        switch (apiConfig.provider) {
+            case 'gemini':
+                return callGemini(prompt);
+            case 'deepseek':
+                return callDeepSeek(prompt);
+            case 'openai':
+                return callOpenAI(prompt);
+            case 'custom':
+                return callOpenAICompatible(prompt);
+            default:
+                throw new Error('Unsupported AI provider.');
+        }
+    }
 
-    let apiConfig = getDefaultApiConfig();
+    let apiConfigStore = createDefaultAIConfigStore();
+    let apiConfig = apiConfigStore.providers.openai;
 
     // 默认提示词
     const DEFAULT_PROMPTS = {
@@ -5699,15 +5986,10 @@ async function saveManualStudySession() {
     }
 
     function saveApiConfig() {
-    apiConfig = {
-        provider: document.getElementById('ai-provider').value,
-        baseUrl: normalizeBaseUrl(document.getElementById('ai-api-url').value),
-        apiKey: document.getElementById('ai-api-key').value,
-        model: document.getElementById('ai-model').value.trim(),
-        protocol: document.getElementById('ai-protocol').value,
-        reasoning: document.getElementById('ai-reasoning').value
-    };
-    localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig));
+    apiConfig = getCurrentProviderFormConfig();
+    apiConfigStore.activeProvider = apiConfig.provider;
+    apiConfigStore.providers[apiConfig.provider] = apiConfig;
+    localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfigStore));
     renderApiConfigForm();
     const status = document.getElementById('ai-status');
     status.textContent = getLanguageText({ en: 'API settings saved locally', ja: 'API設定をこのブラウザに保存しました', pt: 'Configurações da API salvas localmente', ko: 'API 설정이 이 브라우저에 저장되었습니다', es: 'Configuración de API guardada localmente' });
@@ -5716,8 +5998,10 @@ async function saveManualStudySession() {
 
 function clearApiConfig() {
     if (!confirm(getLanguageText({ en: 'Clear local AI API settings on this browser?', ja: 'このブラウザのAI API設定を削除しますか？', pt: 'Limpar as configurações locais da API neste navegador?', ko: '이 브라우저의 로컬 AI API 설정을 삭제할까요?', es: '¿Borrar la configuración local de API en este navegador?' }))) return;
-    localStorage.removeItem(AI_CONFIG_STORAGE_KEY);
-    apiConfig = getDefaultApiConfig();
+    const providerKey = apiConfig.provider;
+    apiConfigStore.providers[providerKey] = normalizeProviderConfig(providerKey);
+    apiConfig = apiConfigStore.providers[providerKey];
+    localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfigStore));
     renderApiConfigForm();
     const status = document.getElementById('ai-status');
     status.textContent = getLanguageText({ en: 'Local API settings cleared', ja: 'ローカルAPI設定を削除しました', pt: 'Configurações locais da API limpas', ko: '로컬 API 설정이 삭제되었습니다', es: 'Configuración local de API borrada' });
