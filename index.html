@@ -1743,7 +1743,7 @@ let currentUser = null;
         return lang === 'ja' ? 'vocab_gois' : 'vocab_words';
     }
 
-    // 数据访问已迁移到 Cloudflare Worker + D1；浏览器不再直连 Supabase。
+    // 数据访问已迁移到 Supabase Auth + Supabase Database。
 
     // AI API 默认配置
     const DEFAULT_API_CONFIG = {
