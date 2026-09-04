@@ -3636,10 +3636,12 @@ function updateStudyAnalyticsLanguage() {
 function getStudyTimeColor(hour) {
 
     const stops = [
-        { hour: 0,  rgb: [149, 167, 219] },
-        { hour: 8,  rgb: [170, 168, 199] },
-        { hour: 16, rgb: [224, 170, 153] },
-        { hour: 24, rgb: [255, 171, 125] }
+        { hour: 0,  rgb: [149, 167, 219] },  // 夜晚：蓝
+        { hour: 6,  rgb: [149, 167, 219] },  // 清晨：蓝
+        { hour: 10, rgb: [255, 171, 125] },  // 白天：橙
+        { hour: 16, rgb: [255, 171, 125] },  // 白天：橙
+        { hour: 20, rgb: [149, 167, 219] },  // 夜晚：蓝
+        { hour: 24, rgb: [149, 167, 219] }   // 深夜：蓝
     ];
 
 
