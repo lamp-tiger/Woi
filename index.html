@@ -2550,6 +2550,7 @@ Example Trans: 我想和你谈谈这个问题。`
     let favLinks = [];
     let customPrompt = '';
     let session = { queue: [], currentIndex: 0, phase: 'PREVIEW', lastInput: '' };
+    let pendingMobileDelete = null;
     let sentenceSession = { items: [], index: 0, revealed: false, limit: null, viewed: 0 };
     let sentenceAutoSpeak = true;
     let sentenceSpeechRate = 0.9;
@@ -2591,6 +2592,8 @@ Example Trans: 我想和你谈谈这个问题。`
 
     // --- 核心逻辑封装 (供键盘和按钮共用) ---
     async function handleNext() {
+        await commitPendingDeleteBeforeAction();
+
         if (session.currentIndex >= session.queue.length) return;
 
         // 新增：移动端跳过输入赋值（因为没有输入框）
@@ -2617,7 +2620,12 @@ Example Trans: 我想和你谈谈这个问题。`
         renderQuiz();
     }
 
-    function handleRetry() {
+    async function handleRetry() {
+        if (pendingMobileDelete) {
+            undoPendingMobileDelete();
+            return;
+        }
+
         if (session.currentIndex >= session.queue.length) return;
 
         session.phase = 'PREVIEW';
@@ -2625,7 +2633,9 @@ Example Trans: 我想和你谈谈这个问题。`
         renderQuiz();
     }
 
-    function handleEdit() {
+    async function handleEdit() {
+        await commitPendingDeleteBeforeAction();
+
         const ea = document.getElementById('quick-edit');
         if (ea) { 
             ea.classList.toggle('hidden'); 
@@ -2634,6 +2644,8 @@ Example Trans: 我想和你谈谈这个问题。`
     }
 
     async function handleDelete() {
+        await commitPendingDeleteBeforeAction();
+
         const w = session.queue[session.currentIndex];
         if(w && confirm(t('deleteConfirm'))) { 
             w.deleted = true; 
@@ -2643,6 +2655,73 @@ Example Trans: 我想和你谈谈这个问题。`
             session.phase='PREVIEW'; 
             renderQuiz(); 
         }
+    }
+
+    async function handleMobileDelete() {
+        if (pendingMobileDelete) {
+            await commitPendingMobileDelete();
+        }
+
+        const w = session.queue[session.currentIndex];
+        if (!w) return;
+
+        const deletedIndex = session.currentIndex;
+
+        w.deleted = true;
+
+        pendingMobileDelete = {
+            word: w,
+            index: deletedIndex,
+            timer: null
+        };
+
+        session.currentIndex++;
+        session.phase = 'PREVIEW';
+        session.lastInput = '';
+
+        renderQuiz();
+
+        pendingMobileDelete.timer = setTimeout(() => {
+            commitPendingMobileDelete();
+        }, 2000);
+    }
+
+    async function commitPendingMobileDelete() {
+        if (!pendingMobileDelete) return;
+
+        const pending = pendingMobileDelete;
+
+        clearTimeout(pending.timer);
+        pendingMobileDelete = null;
+
+        await syncWordToCloud(pending.word);
+        save();
+    }
+
+    function undoPendingMobileDelete() {
+        if (!pendingMobileDelete) return false;
+
+        const pending = pendingMobileDelete;
+
+        clearTimeout(pending.timer);
+
+        pending.word.deleted = false;
+
+        session.currentIndex = pending.index;
+        session.phase = 'PREVIEW';
+        session.lastInput = '';
+
+        pendingMobileDelete = null;
+
+        renderQuiz();
+
+        return true;
+    }
+
+    async function commitPendingDeleteBeforeAction() {
+        if (!pendingMobileDelete) return;
+
+        await commitPendingMobileDelete();
     }
 
     // --- 同步单词到云端 ---
@@ -5145,6 +5224,36 @@ async function saveManualStudySession() {
         return html;
     }
 
+    function setupMobileDeleteGesture(container, isMobile) {
+        if (!container || !isMobile) return;
+
+        let longPressTimer = null;
+        let longPressed = false;
+
+        function clearLongPressTimer() {
+            if (longPressTimer) clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+
+        container.addEventListener('pointerdown', () => {
+            longPressed = false;
+            clearLongPressTimer();
+            longPressTimer = setTimeout(() => {
+                longPressed = true;
+                handleMobileDelete();
+            }, 650);
+        }, { once: true });
+
+        container.addEventListener('pointerup', clearLongPressTimer, { once: true });
+        container.addEventListener('pointercancel', clearLongPressTimer, { once: true });
+        container.addEventListener('pointerleave', clearLongPressTimer, { once: true });
+        container.addEventListener('click', (e) => {
+            if (!longPressed) return;
+            e.preventDefault();
+            e.stopPropagation();
+        }, { once: true });
+    }
+
     function renderQuiz() {
         const container = document.getElementById('quiz-card');
         if (session.currentIndex >= session.queue.length) {
@@ -5200,6 +5309,7 @@ async function saveManualStudySession() {
             <button class="btn-action btn-primary" style="width:100%" onclick="saveQuickEdit()">${t('saved')}</button>
         </div>`;
         container.innerHTML = html;
+        setupMobileDeleteGesture(container, isMobile);
         if(!isMobile && document.getElementById('q-input')) document.getElementById('q-input').focus();
         autoSpeakLearningPhase();
     }
@@ -5224,19 +5334,19 @@ async function saveManualStudySession() {
         if (learnPanel && !learnPanel.classList.contains('hidden')) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
-                handleRetry();
+                await handleRetry();
                 return;
             }
 
             if (e.key === 'Enter') {
                 e.preventDefault();
-                handleNext();
+                await handleNext();
                 return;
             }
 
             if (e.key === 'Delete') {
                 e.preventDefault();
-                handleDelete();
+                await handleDelete();
                 return;
             }
         }
