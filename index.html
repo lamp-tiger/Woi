@@ -1350,13 +1350,13 @@ SUPABASE 数据库表结构说明
         <div class="mobile-actions">
             <button class="btn-main-action" onclick="handleNext()"><span class="btn-text-next">确定 / 下一步 (Enter)</span></button>
             <div class="btn-sub-group">
-                <button class="btn-sub-action" style="background:var(--woi-static)" onclick="session.phase='PREVIEW'; session.lastInput=''; renderQuiz();"><span class="btn-text-retry">重来 (Ctrl+Z)</span></button>
+                <button class="btn-sub-action" style="background:var(--woi-static)" onclick="handleRetry()"><span class="btn-text-retry">重来 (Ctrl+Z)</span></button>
                 <button class="btn-sub-action" style="background:var(--woi-static)" onclick="handleEdit()"><span class="btn-text-edit">修改 (Tab)</span></button>
             </div>
         </div>
 
         <div style="text-align:center; color:var(--muted); margin-top: 15px;" class="shortcut-hint">
-            <kbd>Tab</kbd> <span class="hint-edit">编辑</span> | <kbd>Enter</kbd> <span class="hint-next">下一步</span> | <kbd>Space</kbd> <span class="hint-retry">记错重来</span> | <kbd>Delete</kbd> <span class="hint-delete">永久删除</span>
+            <kbd>Tab</kbd> <span class="hint-edit">编辑</span> | <kbd>Enter</kbd> <span class="hint-next">下一步</span> | <kbd>Ctrl+Z</kbd> <span class="hint-retry">记错重来</span> | <kbd>Delete</kbd> <span class="hint-delete">永久删除</span>
         </div>
     </div>
 
@@ -2618,10 +2618,11 @@ Example Trans: 我想和你谈谈这个问题。`
     }
 
     function handleRetry() {
-        if (session.phase === 'GEN_VERIFY' || session.phase === 'ORIG_VERIFY') {
-            session.phase = 'PREVIEW';
-            renderQuiz();
-        }
+        if (session.currentIndex >= session.queue.length) return;
+
+        session.phase = 'PREVIEW';
+        session.lastInput = '';
+        renderQuiz();
     }
 
     function handleEdit() {
@@ -5221,8 +5222,23 @@ async function saveManualStudySession() {
         
         const learnPanel = document.getElementById('panel-learn');
         if (learnPanel && !learnPanel.classList.contains('hidden')) {
-            if (e.key === 'Enter') { e.preventDefault(); handleNext(); }
-            if (e.key === 'Delete') { handleDelete(); }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                e.preventDefault();
+                handleRetry();
+                return;
+            }
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleNext();
+                return;
+            }
+
+            if (e.key === 'Delete') {
+                e.preventDefault();
+                handleDelete();
+                return;
+            }
         }
     });
 
