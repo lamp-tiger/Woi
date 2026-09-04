@@ -2179,7 +2179,7 @@ USER PROMPT AND ORIGINAL TEXT:
 ` + userPrompt + "\n\n下面是需要整理的文本：\n" + userText;
     }
 
-    function buildRequestBody(provider, config, prompt) { if (config.protocol === 'chat') return { model: config.model, messages: [{ role: 'user', content: prompt }] }; const body = { model: config.model, input: prompt }; if (provider === 'openai' && config.reasoning && config.reasoning !== 'none') body.reasoning = { effort: config.reasoning }; return body; }
+    function buildRequestBody(provider, config, prompt) { if (config.protocol === 'chat') return { model: config.model, messages: [{ role: 'user', content: prompt }] }; const body = { model: config.model, input: prompt }; if (['openai', 'deepseek'].includes(provider) && config.reasoning && config.reasoning !== 'none') body.reasoning = { effort: config.reasoning }; return body; }
 
     function extractAIText(responseJson) { if (!responseJson) return ''; if (typeof responseJson.output_text === 'string') return responseJson.output_text; if (Array.isArray(responseJson.output)) { return responseJson.output.map(item => { if (typeof item.content === 'string') return item.content; if (!Array.isArray(item.content)) return ''; return item.content.map(part => part.text || part.output_text || '').join(''); }).join(''); } return responseJson.choices?.[0]?.message?.content || responseJson.choices?.[0]?.text || ''; }
 
