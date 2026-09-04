@@ -234,6 +234,8 @@
         .confirm-stats .ja-count { color: #e74c3c; font-weight: bold; }
         .confirm-stats .en-count { color: #3498db; font-weight: bold; }
         .confirm-stats .pt-count { color: #27ae60; font-weight: bold; }
+        .confirm-stats .ko-count { color: #8e44ad; font-weight: bold; }
+        .confirm-stats .es-count { color: #d35400; font-weight: bold; }
         .confirm-buttons {
             display: flex;
             gap: 10px;
@@ -404,7 +406,7 @@
 }
 
 
-/* 7D / 30D / 90D 和 All / En / 日 */
+/* 7D / 30D / 90D 和 All / En / 日 / Pt / 한 / Es */
 .analytics-tabs {
     display: flex;
     gap: 3px;
@@ -1013,25 +1015,53 @@ SUPABASE 数据库表结构说明
    - deleted: boolean
    - created_at: timestamptz
 
-4. learning_resources - 学习资源表
+4. vocab_korean - 韩语词汇表（结构与vocab_words完全相同）
    - id: uuid (primary key)
    - user_id: uuid
-   - lang: text (语言: 'en'、'ja' 或 'pt')
+   - word: text (韩语单词/短语)
+   - orig_jp: text (韩语原文句子)
+   - gen_jp: text (韩语例句)
+   - orig_cn: text (原文翻译)
+   - gen_cn: text (例句翻译)
+   - status: text
+   - next_time: timestamptz
+   - review_count: integer
+   - deleted: boolean
+   - created_at: timestamptz
+
+5. vocab_spanish - 西班牙语词汇表（结构与vocab_words完全相同）
+   - id: uuid (primary key)
+   - user_id: uuid
+   - word: text (西班牙语单词/短语)
+   - orig_jp: text (西班牙语原文句子)
+   - gen_jp: text (西班牙语例句)
+   - orig_cn: text (原文翻译)
+   - gen_cn: text (例句翻译)
+   - status: text
+   - next_time: timestamptz
+   - review_count: integer
+   - deleted: boolean
+   - created_at: timestamptz
+
+6. learning_resources - 学习资源表
+   - id: uuid (primary key)
+   - user_id: uuid
+   - lang: text (语言: 'en'、'ja'、'pt'、'ko' 或 'es')
    - name: text (资源名称)
    - url: text (资源链接)
    - created_at: timestamptz
 
-5. ai_prompts - AI提示词表
+7. ai_prompts - AI提示词表
    - id: uuid (primary key)
    - user_id: uuid
-   - lang: text (语言: 'en'、'ja' 或 'pt')
+   - lang: text (语言: 'en'、'ja'、'pt'、'ko' 或 'es')
    - prompt_text: text (提示词内容)
    - updated_at: timestamptz
 
-6. daily_stats - 每日学习进度表
+8. daily_stats - 每日学习进度表
    - id: uuid (primary key)
    - user_id: uuid (默认 '00000000-0000-0000-0000-000000000000')
-   - lang: text (语言: 'en'、'ja' 或 'pt')
+   - lang: text (语言: 'en'、'ja'、'pt'、'ko' 或 'es')
    - date_str: text (日期字符串, 如 '2026/4/17')
    - target_new: integer (新词目标数)
    - target_rev: integer (复习目标数)
@@ -1051,6 +1081,8 @@ SUPABASE 数据库表结构说明
         <button class="lang-btn" id="btn-en" onclick="switchLang('en')">En</button>
         <button class="lang-btn" id="btn-ja" onclick="switchLang('ja')">日</button>
         <button class="lang-btn" id="btn-pt" onclick="switchLang('pt')">Pt</button>
+        <button class="lang-btn" id="btn-ko" onclick="switchLang('ko')">한</button>
+        <button class="lang-btn" id="btn-es" onclick="switchLang('es')">Es</button>
     </div>
 
     <div id="analytics-title" class="analytics-title hidden"></div>
@@ -1154,6 +1186,8 @@ SUPABASE 数据库表结构说明
             <button type="button" data-lang="en">En</button>
             <button type="button" data-lang="ja">日</button>
             <button type="button" data-lang="pt">Pt</button>
+            <button type="button" data-lang="ko">한</button>
+            <button type="button" data-lang="es">Es</button>
         </div>
 
         <!-- 后面 JS 会在这里生成图表 -->
@@ -1215,6 +1249,8 @@ SUPABASE 数据库表结构说明
                     <option value="en">English</option>
                     <option value="ja">日本語</option>
                     <option value="pt">Português</option>
+                    <option value="ko">Korean</option>
+                    <option value="es">Spanish</option>
                 </select>
 
                 <div class="study-add-field">
@@ -1437,10 +1473,13 @@ SUPABASE 数据库表结构说明
     <div class="confirm-box">
         <h3 class="confirm-title">确认导入</h3>
         <div class="confirm-stats">
-            <div><span class="confirm-ja-label">日文单词：</span><span class="ja-count" id="confirm-ja-count">0 个</span></div>
-            <div><span class="confirm-en-label">英文单词：</span><span class="en-count" id="confirm-en-count">0 个</span></div>
+            <div><span class="confirm-en-label">English words:</span> <span id="confirm-en-count" class="en-count">0</span></div>
+            <div><span class="confirm-ja-label">Japanese words:</span> <span id="confirm-ja-count" class="ja-count">0</span></div>
+            <div><span class="confirm-pt-label">Portuguese words:</span> <span id="confirm-pt-count" class="pt-count">0</span></div>
+            <div><span class="confirm-ko-label">Korean words:</span> <span id="confirm-ko-count" class="ko-count">0</span></div>
+            <div><span class="confirm-es-label">Spanish words:</span> <span id="confirm-es-count" class="es-count">0</span></div>
             <div style="border-top: 1px solid #ddd; margin-top: 10px; padding-top: 10px;">
-                <span class="confirm-total-label">总计：</span><span id="confirm-total-count" style="font-weight: bold;">0 个</span>
+                <span class="confirm-total-label">Total:</span> <span id="confirm-total-count" style="font-weight: bold;">0</span>
             </div>
         </div>
         <p class="confirm-hint" style="color: #666; font-size: 14px;">确认要将这些单词导入到相应的词库吗？</p>
@@ -1463,8 +1502,31 @@ const sb = window.supabase.createClient(
 
 let currentUser = null;
 
+const LANGUAGE_CONFIG = {
+    en: { code: 'en', shortLabel: 'En', name: 'English', table: 'vocab_words', ttsLang: 'en-US' },
+    ja: { code: 'ja', shortLabel: '日', name: 'Japanese', table: 'vocab_gois', ttsLang: 'ja-JP' },
+    pt: { code: 'pt', shortLabel: 'Pt', name: 'Portuguese', table: 'vocab_portuguese', ttsLang: 'pt-PT' },
+    ko: { code: 'ko', shortLabel: '한', name: 'Korean', table: 'vocab_korean', ttsLang: 'ko-KR' },
+    es: { code: 'es', shortLabel: 'Es', name: 'Spanish', table: 'vocab_spanish', ttsLang: 'es-ES' }
+};
+
+const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_CONFIG);
+
+function getLanguageConfig(lang = currentLang) {
+    return LANGUAGE_CONFIG[lang] || LANGUAGE_CONFIG.en;
+}
+
+function getLanguageText(labels, lang = currentLang) {
+    return labels[lang] || labels.en;
+}
+
+function getImportCountUnit() {
+    return getLanguageText({ en: 'words', ja: '個', pt: 'palavras', ko: '개', es: 'palabras' });
+}
+
     // 当前语言设置
     let currentLang = localStorage.getItem('lang') || 'en';
+    if (!LANGUAGE_CONFIG[currentLang]) currentLang = 'en';
     
     // 待导入的单词缓存
     let pendingImportWords = [];
@@ -1701,6 +1763,150 @@ let currentUser = null;
             saved: "Salvo",
             copied: "✅ Copiado",
             langLabel: "Idioma:"
+        },
+        ko: {
+            navLearn: "학습",
+            navSentences: "문장",
+            navImport: "가져오기",
+            navLib: "단어장",
+            statNew: "새 단어",
+            statRev: "복습",
+            statRel: "재학습",
+            btnNext: "다음 (Enter)",
+            btnRetry: "다시 시도 (Ctrl+Z)",
+            btnEdit: "편집 (Tab)",
+            btnAdd: "추가",
+            btnSavePrompt: "프롬프트 저장",
+            btnCopy: "전체 요청 복사 및 입력란 비우기",
+            btnImport: "분석 및 가져오기",
+            btnSaveApi: "API 설정 저장",
+            btnAiImport: "🚀 AI 분석 및 가져오기",
+            btnExport: "JSON 백업",
+            btnRestore: "복원",
+            btnClear: "전체 삭제",
+            btnCancel: "취소",
+            btnConfirm: "가져오기 확인",
+            hintEdit: "편집",
+            hintNext: "다음",
+            hintRetry: "다시 시도",
+            hintDelete: "삭제",
+            resourceTitle: "🔗 학습 자료",
+            promptTitle: "🔥 AI 프롬프트",
+            importTitle: "📥 새 단어 가져오기",
+            aiApiTitle: "🤖 AI API 설정",
+            settingsTitle: "⚙️ 목표 및 백업",
+            libTitle: "🗃️ 단어장",
+            thWord: "단어 / 발음",
+            thOrig: "원문",
+            thOrigTrans: "원문 번역",
+            thGen: "예문",
+            thGenTrans: "예문 번역",
+            thAction: "작업",
+            labelNew: "새 단어:",
+            labelRev: "복습:",
+            labelRel: "재학습:",
+            confirmTitle: "가져오기 확인",
+            confirmJa: "일본어 단어:",
+            confirmEn: "영어 단어:",
+            confirmPt: "포르투갈어 단어:",
+            confirmKo: "한국어 단어:",
+            confirmEs: "스페인어 단어:",
+            confirmTotal: "합계:",
+            confirmHint: "이 단어들을 현재 선택한 언어의 단어장으로 가져올까요?",
+            phasePreview: "미리보기",
+            phaseRecallUsage: "용법 떠올리기",
+            phaseVerify: "확인",
+            phaseRecallContext: "문맥 떠올리기",
+            completed: "🎉 오늘 학습 완료!",
+            sentenceReveal: "번역 보기",
+            sentenceNext: "다음 문장 (Enter)",
+            sentenceEmpty: "아직 사용할 문장이 없습니다.",
+            sentenceDone5: "문장 5개를 더 읽었습니다 🎉",
+            sentenceMore5: "5개 더 읽기",
+            sentenceBrowse: "계속 보기",
+            sentenceViewed: "본 문장 수",
+            context: "문맥:",
+            usage: "용법:",
+            placeholderGen: "예문을 입력하세요...",
+            placeholderOrig: "원문을 입력하세요...",
+            noInput: "입력 없음",
+            deleteConfirm: "이 단어를 영구 삭제할까요?",
+            clearConfirm: "⚠️ 모든 데이터를 삭제할까요?",
+            saved: "저장됨",
+            copied: "✅ 복사됨",
+            langLabel: "언어:"
+        },
+        es: {
+            navLearn: "Estudiar",
+            navSentences: "Frases",
+            navImport: "Importar",
+            navLib: "Vocabulario",
+            statNew: "Nuevas",
+            statRev: "Repaso",
+            statRel: "Reaprender",
+            btnNext: "Siguiente (Enter)",
+            btnRetry: "Reintentar (Ctrl+Z)",
+            btnEdit: "Editar (Tab)",
+            btnAdd: "Añadir",
+            btnSavePrompt: "Guardar prompt",
+            btnCopy: "Copiar solicitud completa y limpiar",
+            btnImport: "Analizar e importar",
+            btnSaveApi: "Guardar config. de API",
+            btnAiImport: "🚀 IA analizar e importar",
+            btnExport: "Copia JSON",
+            btnRestore: "Restaurar",
+            btnClear: "Eliminar todo",
+            btnCancel: "Cancelar",
+            btnConfirm: "Confirmar importación",
+            hintEdit: "Editar",
+            hintNext: "Siguiente",
+            hintRetry: "Reintentar",
+            hintDelete: "Eliminar",
+            resourceTitle: "🔗 Recursos de aprendizaje",
+            promptTitle: "🔥 Prompt de IA",
+            importTitle: "📥 Importar nuevas palabras",
+            aiApiTitle: "🤖 Configuración de API de IA",
+            settingsTitle: "⚙️ Metas y copia de seguridad",
+            libTitle: "🗃️ Vocabulario",
+            thWord: "Palabra / Pronunciación",
+            thOrig: "Frase original",
+            thOrigTrans: "Traducción",
+            thGen: "Frase de ejemplo",
+            thGenTrans: "Traducción del ejemplo",
+            thAction: "Acción",
+            labelNew: "Nuevas:",
+            labelRev: "Repaso:",
+            labelRel: "Reaprender:",
+            confirmTitle: "Confirmar importación",
+            confirmJa: "Palabras japonesas:",
+            confirmEn: "Palabras inglesas:",
+            confirmPt: "Palabras portuguesas:",
+            confirmKo: "Palabras coreanas:",
+            confirmEs: "Palabras españolas:",
+            confirmTotal: "Total:",
+            confirmHint: "¿Seguro que quieres importar estas palabras al vocabulario del idioma actual?",
+            phasePreview: "VISTA PREVIA",
+            phaseRecallUsage: "RECORDAR USO",
+            phaseVerify: "VERIFICAR",
+            phaseRecallContext: "RECORDAR CONTEXTO",
+            completed: "🎉 ¡Tarea de hoy completada!",
+            sentenceReveal: "Mostrar traducción",
+            sentenceNext: "Siguiente frase (Enter)",
+            sentenceEmpty: "Todavía no hay frases disponibles.",
+            sentenceDone5: "Leíste 5 frases más 🎉",
+            sentenceMore5: "Leer 5 más",
+            sentenceBrowse: "Seguir leyendo",
+            sentenceViewed: "Frases vistas",
+            context: "Contexto:",
+            usage: "Uso:",
+            placeholderGen: "Escribe la frase de ejemplo...",
+            placeholderOrig: "Escribe la frase original...",
+            noInput: "Sin entrada",
+            deleteConfirm: "¿Eliminar esta palabra permanentemente?",
+            clearConfirm: "⚠️ ¿Eliminar todos los datos?",
+            saved: "Guardado",
+            copied: "✅ Copiado",
+            langLabel: "Idioma:"
         }
     };
 
@@ -1741,9 +1947,9 @@ let currentUser = null;
     // 更新界面语言
     function updateLanguageUI() {
         // 更新语言按钮状态
-        document.getElementById('btn-en').classList.toggle('active', currentLang === 'en');
-        document.getElementById('btn-ja').classList.toggle('active', currentLang === 'ja');
-        document.getElementById('btn-pt').classList.toggle('active', currentLang === 'pt');
+        SUPPORTED_LANGUAGES.forEach(lang => {
+            document.getElementById(`btn-${lang}`)?.classList.toggle('active', currentLang === lang);
+        });
         
         // 更新导航
         document.querySelector('.nav-text-learn').textContent = t('navLearn');
@@ -1803,8 +2009,10 @@ let currentUser = null;
         document.querySelector('.confirm-title').textContent = t('confirmTitle');
         document.querySelector('.confirm-ja-label').textContent = t('confirmJa');
         document.querySelector('.confirm-en-label').textContent = t('confirmEn');
-        const confirmPtLabel = document.querySelector('.confirm-pt-label');
-        if (confirmPtLabel) confirmPtLabel.textContent = t('confirmPt');
+        SUPPORTED_LANGUAGES.forEach(lang => {
+            const label = document.querySelector(`.confirm-${lang}-label`);
+            if (label) label.textContent = t(`confirm${lang.charAt(0).toUpperCase() + lang.slice(1)}`);
+        });
         document.querySelector('.confirm-total-label').textContent = t('confirmTotal');
         document.querySelector('.confirm-hint').textContent = t('confirmHint');
         document.querySelector('.btn-text-cancel').textContent = t('btnCancel');
@@ -1822,34 +2030,30 @@ let currentUser = null;
 
     // 判断单词语言类型
     function detectWordLanguage(word) {
-        // 只可靠识别日文；拉丁字母语言（英语/葡语）由当前模块决定。
         if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(word)) {
             return 'ja';
         }
-        return 'en';
+        if (/[\uAC00-\uD7AF]/.test(word)) {
+            return 'ko';
+        }
+        return 'unknown';
     }
 
-    function getImportTargetLang(word) {
-        if (currentLang === 'pt') return 'pt';
-        return detectWordLanguage(word);
+    function getImportTargetLang() {
+        return getLanguageConfig(currentLang).code;
     }
 
     function getLanguageBadge(lang) {
-        if (lang === 'ja') return '日';
-        if (lang === 'pt') return 'Pt';
-        return 'En';
+        return getLanguageConfig(lang).shortLabel;
     }
 
     function getLocaleForCurrentLang() {
-        if (currentLang === 'ja') return 'ja-JP';
-        if (currentLang === 'pt') return 'pt-PT';
-        return 'en-US';
+        return getLanguageConfig(currentLang).ttsLang;
     }
 
     // 获取当前语言对应的表名
     function getTableName(lang) {
-        const tableMap = { en: 'vocab_words', ja: 'vocab_gois', pt: 'vocab_portuguese' };
-        return tableMap[lang] || tableMap.en;
+        return LANGUAGE_CONFIG[lang]?.table || LANGUAGE_CONFIG.en.table;
     }
 
     // 数据访问已迁移到 Supabase Auth + Supabase Database。
@@ -1892,7 +2096,25 @@ Organize exatamente no formato do exemplo:
 Original: O pesquisador foi meticuloso ao documentar cada artefato.
 Example: Ele é meticuloso com a aparência pessoal.
 Original Trans: 研究人员在记录每一件文物时都非常细心。
-Example Trans: 他对自己个人的仪表非常讲究。`
+Example Trans: 他对自己个人的仪表非常讲究。`,
+        ko: `내 한국어 수준: 【TOPIK II】
+제가 제공하는 텍스트에서 어려운 단어 또는 표현을 추출해 주세요(8개를 넘으면 가장 중요한 8개를 선택).
+
+각 항목은 반드시 아래 형식을 그대로 사용해 주세요. 동사/형용사는 가능하면 -다 사전형으로 정리해 주세요.
+① 먹다 [먹따] v.
+Original: 어제 친구들과 맛있는 음식을 먹었어요.
+Example: 저는 아침마다 과일을 먹습니다.
+Original Trans: 昨天我和朋友们吃了好吃的食物。
+Example Trans: 我每天早上吃水果。`,
+        es: `Mi nivel de español: 【B1/B2】
+Extrae palabras o expresiones difíciles del texto que proporcione (si hay más de 8, elige las 8 más importantes).
+
+Usa exactamente el siguiente formato. Para verbos, da el infinitivo; para sustantivos, incluye el artículo cuando sea útil.
+① hablar [aˈβlaɾ] v.
+Original: Ella habló con el profesor después de clase.
+Example: Quiero hablar contigo sobre este problema.
+Original Trans: 她下课后和老师谈了话。
+Example Trans: 我想和你谈谈这个问题。`
     };
 
     let words = [];
@@ -2346,7 +2568,7 @@ function openStudyAnalytics() {
     const title = document.getElementById('analytics-title');
 
     if (title) {
-        title.textContent = currentLang === 'ja' ? '学習分析' : currentLang === 'pt' ? 'Análise de estudo' : 'Study Analytics';
+        title.textContent = getLanguageText({ en: 'Study Analytics', ja: '学習分析', pt: 'Análise de estudo', ko: '학습 분석', es: 'Análisis de estudio' });
 
         title.classList.remove('hidden');
     }
@@ -2834,7 +3056,7 @@ function renderStudyAnalytics() {
     if (countEl) {
 
         countEl.textContent =
-            currentLang === 'ja' ? `${studyHistory.length} 回` : currentLang === 'pt' ? `${studyHistory.length} sessões` : `${studyHistory.length} sessions`;
+            getLanguageText({ en: `${studyHistory.length} sessions`, ja: `${studyHistory.length} 回`, pt: `${studyHistory.length} sessões`, ko: `${studyHistory.length}회`, es: `${studyHistory.length} sesiones` });
     }
 
 
@@ -2852,14 +3074,14 @@ function renderStudyAnalytics() {
             todayNote.textContent =
                 currentLang === 'ja'
                     ? '今日はまだ学習していません'
-                    : currentLang === 'pt' ? 'Ainda sem tempo de estudo hoje' : 'No study time today';
+                    : getLanguageText({ en: 'No study time today', pt: 'Ainda sem tempo de estudo hoje', ko: '오늘은 아직 학습 시간이 없습니다', es: 'Aún no hay tiempo de estudio hoy' });
 
         } else {
 
             todayNote.textContent =
                 currentLang === 'ja'
                     ? `今日 ${formatAnalyticsTime(todaySeconds)} 学習`
-                    : currentLang === 'pt' ? `${formatAnalyticsTime(todaySeconds)} estudados hoje` : `${formatAnalyticsTime(todaySeconds)} studied today`;
+                    : getLanguageText({ en: `${formatAnalyticsTime(todaySeconds)} studied today`, pt: `${formatAnalyticsTime(todaySeconds)} estudados hoje`, ko: `오늘 ${formatAnalyticsTime(todaySeconds)} 학습`, es: `${formatAnalyticsTime(todaySeconds)} estudiados hoy` });
         }
     }
 
@@ -2876,7 +3098,7 @@ function renderStudyAnalytics() {
         averageNote.textContent =
             currentLang === 'ja'
                 ? `7日間平均：${formatAnalyticsTime(sevenAvg)} / 日`
-                : currentLang === 'pt' ? `Média de 7 dias: ${formatAnalyticsTime(sevenAvg)}/dia` : `7-day average: ${formatAnalyticsTime(sevenAvg)}/day`;
+                : getLanguageText({ en: `7-day average: ${formatAnalyticsTime(sevenAvg)}/day`, pt: `Média de 7 dias: ${formatAnalyticsTime(sevenAvg)}/dia`, ko: `7일 평균: ${formatAnalyticsTime(sevenAvg)}/일`, es: `Promedio de 7 días: ${formatAnalyticsTime(sevenAvg)}/día` });
     }
 
 
@@ -2912,7 +3134,9 @@ function updateStudyAnalyticsLanguage() {
     const labels = {
         en: { today: 'TODAY', seven: '7 DAYS', thirty: '30 DAYS', total: 'TOTAL', trend: 'Study Trend', range7: '7D', monthly: 'Monthly', quarterly: 'Quarterly', history: 'Study History', add: 'Add', all: 'All', title: 'Study Analytics', addTitle: 'Add Study Record', language: 'Language', duration: 'Duration', endTime: 'End time', save: 'Save' },
         ja: { today: '今日', seven: '7日間', thirty: '30日間', total: '合計', trend: '学習推移', range7: '7日', monthly: '月別', quarterly: '四半期', history: '学習履歴', add: '追加', all: 'すべて', title: '学習分析', addTitle: '学習記録を追加', language: '言語', duration: '持続時間', endTime: '終了時間', save: '保存' },
-        pt: { today: 'HOJE', seven: '7 DIAS', thirty: '30 DIAS', total: 'TOTAL', trend: 'Tendência de estudo', range7: '7D', monthly: 'Mensal', quarterly: 'Trimestral', history: 'Histórico de estudo', add: 'Adicionar', all: 'Todos', title: 'Análise de estudo', addTitle: 'Adicionar registro de estudo', language: 'Idioma', duration: 'Duração', endTime: 'Hora final', save: 'Salvar' }
+        pt: { today: 'HOJE', seven: '7 DIAS', thirty: '30 DIAS', total: 'TOTAL', trend: 'Tendência de estudo', range7: '7D', monthly: 'Mensal', quarterly: 'Trimestral', history: 'Histórico de estudo', add: 'Adicionar', all: 'Todos', title: 'Análise de estudo', addTitle: 'Adicionar registro de estudo', language: 'Idioma', duration: 'Duração', endTime: 'Hora final', save: 'Salvar' },
+        ko: { today: '오늘', seven: '7일', thirty: '30일', total: '전체', trend: '학습 추이', range7: '7일', monthly: '월별', quarterly: '분기별', history: '학습 기록', add: '추가', all: '전체', title: '학습 분석', addTitle: '학습 기록 추가', language: '언어', duration: '시간', endTime: '종료 시간', save: '저장' },
+        es: { today: 'HOY', seven: '7 DÍAS', thirty: '30 DÍAS', total: 'TOTAL', trend: 'Tendencia de estudio', range7: '7D', monthly: 'Mensual', quarterly: 'Trimestral', history: 'Historial de estudio', add: 'Añadir', all: 'Todos', title: 'Análisis de estudio', addTitle: 'Añadir registro de estudio', language: 'Idioma', duration: 'Duración', endTime: 'Hora final', save: 'Guardar' }
     };
 
     const langLabels = labels[currentLang] || labels.en;
@@ -4591,20 +4815,18 @@ async function saveManualStudySession() {
         }
         
         // 统计语言分布
-        let jaCount = 0, enCount = 0, ptCount = 0;
-        pendingImportWords.forEach(w => {
-            const targetLang = getImportTargetLang(w.word);
-            if (targetLang === 'ja') jaCount++;
-            else if (targetLang === 'pt') ptCount++;
-            else enCount++;
+        const importCounts = Object.fromEntries(SUPPORTED_LANGUAGES.map(lang => [lang, 0]));
+        const targetLang = getImportTargetLang();
+        pendingImportWords.forEach(() => {
+            importCounts[targetLang] = (importCounts[targetLang] || 0) + 1;
         });
         
         // 更新确认对话框
-        document.getElementById('confirm-ja-count').textContent = jaCount + (currentLang === 'ja' ? ' 個' : ' words');
-        document.getElementById('confirm-en-count').textContent = enCount + (currentLang === 'ja' ? ' 個' : ' words');
-        const ptCountEl = document.getElementById('confirm-pt-count');
-        if (ptCountEl) ptCountEl.textContent = ptCount + (currentLang === 'pt' ? ' palavras' : currentLang === 'ja' ? ' 個' : ' words');
-        document.getElementById('confirm-total-count').textContent = pendingImportWords.length + (currentLang === 'pt' ? ' palavras' : currentLang === 'ja' ? ' 個' : ' words');
+        SUPPORTED_LANGUAGES.forEach(lang => {
+            const el = document.getElementById(`confirm-${lang}-count`);
+            if (el) el.textContent = importCounts[lang] + ' ' + getImportCountUnit();
+        });
+        document.getElementById('confirm-total-count').textContent = pendingImportWords.length + ' ' + getImportCountUnit();
         
         // 显示对话框
         document.getElementById('import-confirm-modal').classList.add('show');
@@ -4631,7 +4853,7 @@ async function saveManualStudySession() {
 
         for (let w of pendingImportWords) {
             const key = normalizeWordKey(w.word);
-            const wordLang = getImportTargetLang(w.word);
+            const wordLang = getImportTargetLang();
 
             if (!key || existingKeys.has(key) || batchKeys.has(key)) {
                 skippedDuplicates++;
@@ -4892,14 +5114,26 @@ async function saveManualStudySession() {
 
 
 
-    function getPreferredPortugueseVoice() {
+    function getPreferredVoiceByLang(lang, preferredCodes = []) {
         const voices = speechSynthesis.getVoices();
-        const portugueseVoices = voices.filter(v => (v.lang || '').toLowerCase().startsWith('pt'));
-        if (portugueseVoices.length === 0) return null;
+        const matchingVoices = voices.filter(v => (v.lang || '').toLowerCase().startsWith(lang));
+        if (matchingVoices.length === 0) return null;
 
-        return portugueseVoices.find(v => (v.lang || '').toLowerCase() === 'pt-pt')
-            || portugueseVoices.find(v => (v.lang || '').toLowerCase() === 'pt-br')
-            || portugueseVoices[0];
+        return preferredCodes
+            .map(code => matchingVoices.find(v => (v.lang || '').toLowerCase() === code))
+            .filter(Boolean)[0] || matchingVoices[0];
+    }
+
+    function getPreferredPortugueseVoice() {
+        return getPreferredVoiceByLang('pt', ['pt-pt', 'pt-br']);
+    }
+
+    function getPreferredKoreanVoice() {
+        return getPreferredVoiceByLang('ko', ['ko-kr']);
+    }
+
+    function getPreferredSpanishVoice() {
+        return getPreferredVoiceByLang('es', ['es-es', 'es-mx']);
     }
 
     function configureUtteranceVoice(utterance) {
@@ -4912,7 +5146,21 @@ async function saveManualStudySession() {
 
         if (currentLang === 'pt') {
             const voice = getPreferredPortugueseVoice();
-            utterance.lang = voice?.lang || 'pt-PT';
+            utterance.lang = voice?.lang || getLanguageConfig('pt').ttsLang;
+            if (voice) utterance.voice = voice;
+            return;
+        }
+
+        if (currentLang === 'ko') {
+            const voice = getPreferredKoreanVoice();
+            utterance.lang = voice?.lang || getLanguageConfig('ko').ttsLang;
+            if (voice) utterance.voice = voice;
+            return;
+        }
+
+        if (currentLang === 'es') {
+            const voice = getPreferredSpanishVoice();
+            utterance.lang = voice?.lang || getLanguageConfig('es').ttsLang;
             if (voice) utterance.voice = voice;
             return;
         }
@@ -5095,8 +5343,8 @@ async function saveManualStudySession() {
             ${item.word ? `<div class="sentence-word">${item.word}</div>` : ''}
             ${transHtml}
             <div class="sentence-actions">
-                <button class="btn-action btn-secondary" onclick="speakCurrentSentence()">🔊 ${currentLang === 'ja' ? 'もう一度聞く' : currentLang === 'pt' ? 'Ouvir de novo' : 'Replay'}</button>
-                <button class="btn-action btn-secondary" onclick="toggleSentenceAutoSpeak()">${sentenceAutoSpeak ? '🔈 ' + (currentLang === 'ja' ? '自動朗読 ON' : currentLang === 'pt' ? 'Leitura auto ON' : 'Auto read ON') : '🔇 ' + (currentLang === 'ja' ? '自動朗読 OFF' : currentLang === 'pt' ? 'Leitura auto OFF' : 'Auto read OFF')}</button>
+                <button class="btn-action btn-secondary" onclick="speakCurrentSentence()">🔊 ${getLanguageText({ en: 'Replay', ja: 'もう一度聞く', pt: 'Ouvir de novo', ko: '다시 듣기', es: 'Reproducir' })}</button>
+                <button class="btn-action btn-secondary" onclick="toggleSentenceAutoSpeak()">${sentenceAutoSpeak ? '🔈 ' + (getLanguageText({ en: 'Auto read ON', ja: '自動朗読 ON', pt: 'Leitura auto ON', ko: '자동 읽기 ON', es: 'Lectura auto ON' })) : '🔇 ' + (getLanguageText({ en: 'Auto read OFF', ja: '自動朗読 OFF', pt: 'Leitura auto OFF', ko: '자동 읽기 OFF', es: 'Lectura auto OFF' }))}</button>
                 <button class="btn-action btn-secondary" onclick="toggleSentenceTranslation()">${t('sentenceReveal')} (Space)</button>
                 <button class="btn-action btn-primary" onclick="nextSentence()">${t('sentenceNext')}</button>
             </div>`;
@@ -5220,7 +5468,7 @@ async function saveManualStudySession() {
         const blob = new Blob([JSON.stringify({words, settings}, null, 2)], { type: 'application/json' });
         const a = document.createElement('a'); 
         a.href = URL.createObjectURL(blob);
-        a.download = `${currentLang === 'ja' ? 'Ja' : currentLang === 'pt' ? 'Pt' : 'En'}_Library_${new Date().toLocaleDateString()}.json`; 
+        a.download = `${getLanguageConfig(currentLang).shortLabel}_Library_${new Date().toLocaleDateString()}.json`; 
         a.click();
     }
     
