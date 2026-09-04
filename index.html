@@ -5225,7 +5225,16 @@ async function saveManualStudySession() {
     }
 
     function setupMobileDeleteGesture(container, isMobile) {
-        if (!container || !isMobile) return;
+        if (!container) return;
+
+        if (!isMobile) {
+            container.onpointerdown = null;
+            container.onpointerup = null;
+            container.onpointercancel = null;
+            container.onpointerleave = null;
+            container.onclick = null;
+            return;
+        }
 
         let longPressTimer = null;
         let longPressed = false;
@@ -5235,23 +5244,23 @@ async function saveManualStudySession() {
             longPressTimer = null;
         }
 
-        container.addEventListener('pointerdown', () => {
+        container.onpointerdown = () => {
             longPressed = false;
             clearLongPressTimer();
             longPressTimer = setTimeout(() => {
                 longPressed = true;
                 handleMobileDelete();
             }, 650);
-        }, { once: true });
+        };
 
-        container.addEventListener('pointerup', clearLongPressTimer, { once: true });
-        container.addEventListener('pointercancel', clearLongPressTimer, { once: true });
-        container.addEventListener('pointerleave', clearLongPressTimer, { once: true });
-        container.addEventListener('click', (e) => {
+        container.onpointerup = clearLongPressTimer;
+        container.onpointercancel = clearLongPressTimer;
+        container.onpointerleave = clearLongPressTimer;
+        container.onclick = (e) => {
             if (!longPressed) return;
             e.preventDefault();
             e.stopPropagation();
-        }, { once: true });
+        };
     }
 
     function renderQuiz() {
