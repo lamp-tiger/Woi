@@ -101,14 +101,15 @@
         .btn-sub-action { flex: 1; height: 45px; border-radius: 8px; border: none; color: white; font-weight: bold; }
 
         #quick-edit input { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
-        .prompt-text { width: 100%; height: 100px; font-size: 13px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .prompt-text { width: 100%; height: 100px; font-size: 13px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-family: inherit; }
         .table-container { overflow-x: auto; max-height: 60vh; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #e0e0e0; padding: 8px; text-align: left; }
         .lib-input { width: 100%; padding: 4px; border: 1px solid transparent; background: transparent; }
         .hidden { display: none; }
-        kbd { background: #333; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-        .btn-action { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        kbd { background: #333; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: inherit; }
+        .btn-action { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; transition: 0.2s; font-weight: bold; font-family: inherit; }
+        .container button, .container input, .container textarea, .container select { font-family: inherit; }
 
         /* 刷句子模式 */
         .sentence-card { text-align: center; padding: 30px 20px; }
@@ -1359,7 +1360,7 @@ SUPABASE 数据库表结构说明
             </div>
 
             <h3 style="margin-top:25px;" class="import-title">📥 新词导入</h3>
-            <textarea id="import-area" style="width:100%; height:100px; padding:10px; box-sizing:border-box;" placeholder="粘贴 AI 生成的内容..."></textarea>
+            <textarea id="import-area" style="width:100%; height:100px; padding:10px; box-sizing:border-box; font-family:inherit;" placeholder="粘贴原文或 AI 生成的词条内容..."></textarea>
             <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
                 <button class="btn-action btn-primary btn-text-copy" onclick="copyPrompt(event)" style="flex:1; min-width:220px;">Copy full request & clear input</button>
                 <button onclick="showImportConfirm()" class="btn-action btn-text-import-btn" style="flex:1; min-width:180px; background:#fff; color:#2c3e50; border:1px solid #ccc; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold; transition:0.2s;">Parse & Import</button>
@@ -5746,7 +5747,6 @@ function clearApiConfig() {
                 parsedWords = parsedWords.slice(0, MAX_AI_IMPORT_WORDS);
             }
 
-            document.getElementById('import-area').value = content;
             pendingImportWords = parsedWords;
             statusEl.textContent = getLanguageText({ en: retried ? 'AI corrected, parsing...' : 'AI complete, parsing...', ja: retried ? 'AI修正完了、解析中...' : 'AI完了、解析中...', pt: retried ? 'IA corrigida, analisando...' : 'IA concluída, analisando...', ko: retried ? 'AI 수정 완료, 분석 중...' : 'AI 완료, 분석 중...', es: retried ? 'IA corregida, analizando...' : 'IA completada, analizando...' });
             showImportConfirm();
