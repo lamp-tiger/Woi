@@ -5328,7 +5328,7 @@ async function saveManualStudySession() {
             if (e.code === 'Space') { e.preventDefault(); toggleSentenceTranslation(); }
             return;
         }
-        if (e.key === 'Tab') { e.preventDefault(); handleEdit(); return; }
+        if (e.key === 'Tab') { e.preventDefault(); await handleEdit(); return; }
         
         const learnPanel = document.getElementById('panel-learn');
         if (learnPanel && !learnPanel.classList.contains('hidden')) {
