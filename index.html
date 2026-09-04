@@ -1370,47 +1370,46 @@ SUPABASE 数据库表结构说明
 
 <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:10px;">
 
-    <label style="font-size:13px;">API URL</label>
-    <input
-        type="text"
-        id="ai-api-url"
-        placeholder="https://api.openai.com/v1/responses"
-        style="padding:8px; width:100%; box-sizing:border-box;"
-    >
+    <label style="font-size:13px;">Provider</label>
+<select id="ai-provider" style="padding:8px; width:100%; box-sizing:border-box;" onchange="handleAIProviderChange()">
+    <option value="openai">OpenAI</option>
+    <option value="deepseek">DeepSeek</option>
+    <option value="custom">Custom / OpenAI Compatible</option>
+</select>
 
-    <label style="font-size:13px;">API KEY</label>
-    <input
-        type="password"
-        id="ai-api-key"
-        placeholder="sk-..."
-        style="padding:8px; width:100%; box-sizing:border-box;"
-    >
+<label style="font-size:13px;">Base URL</label>
+<input type="text" id="ai-api-url" name="ai-base-url" placeholder="https://api.openai.com/v1" autocomplete="off" style="padding:8px; width:100%; box-sizing:border-box;">
 
-    <label style="font-size:13px;">模型</label>
-    <select id="ai-model" style="padding:8px; width:100%; box-sizing:border-box;">
-        <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash-Lite（超低成本/推荐）</option>
-        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-        <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
-        <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
-        <option value="gpt-4o-mini">GPT-4o mini</option>
-    </select>
+<label style="font-size:13px;">API KEY</label>
+<input type="password" id="ai-api-key" name="ai-api-key" placeholder="sk-..." autocomplete="off" data-lpignore="true" data-1p-ignore="true" style="padding:8px; width:100%; box-sizing:border-box;">
 
-    <label style="font-size:13px;">Reasoning</label>
-    <select
-        id="ai-reasoning"
-        style="padding:8px; width:100%; box-sizing:border-box;"
-    >
-        <option value="none">None（最省）</option>
-        <option value="low" selected>Low（推荐）</option>
-        <option value="medium">Medium</option>
-    </select>
+<label style="font-size:13px;">Model</label>
+<input type="text" id="ai-model" name="ai-model" list="ai-model-options" autocomplete="off" style="padding:8px; width:100%; box-sizing:border-box;">
+<datalist id="ai-model-options">
+    <option value="gpt-5.6-luna"></option>
+    <option value="gpt-5.4-mini"></option>
+    <option value="deepseek-v4-flash"></option>
+    <option value="deepseek-v4-pro"></option>
+</datalist>
+
+<label style="font-size:13px;">Protocol</label>
+<select id="ai-protocol" style="padding:8px; width:100%; box-sizing:border-box;">
+    <option value="responses">Responses API</option>
+    <option value="chat">Chat Completions</option>
+</select>
+
+<label style="font-size:13px;">Reasoning</label>
+<select id="ai-reasoning" style="padding:8px; width:100%; box-sizing:border-box;">
+    <option value="none">None（最省）</option>
+    <option value="low" selected>Low（推荐）</option>
+    <option value="medium">Medium</option>
+</select>
 
 </div>
 
-<div style="display:flex; gap:10px; margin-bottom:10px;">
-    <button class="btn-action btn-text-save-api" onclick="saveApiConfig()">
-        保存 API 配置
-    </button>
+<div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+    <button class="btn-action btn-text-save-api" onclick="saveApiConfig()">保存 API 配置</button>
+    <button class="btn-action" onclick="clearApiConfig()" style="background:#fff; color:#c0392b; border:1px solid #e0e0e0;">Clear API Settings</button>
 </div>
 
 <div id="ai-status" style="font-size:13px; color:#666;"></div>
@@ -2058,15 +2057,36 @@ function getImportCountUnit() {
 
     // 数据访问已迁移到 Supabase Auth + Supabase Database。
 
-    // AI API 默认配置
-    const DEFAULT_API_CONFIG = {
-        url: 'https://api.openai.com/v1/responses',
-        key: '',
-        model: 'gpt-5.6-luna',
-        reasoning: 'low'
+    const AI_CONFIG_STORAGE_KEY = 'woi.ai.config.v2';
+    const LEGACY_AI_CONFIG_STORAGE_KEY = 'en_v3_api_config';
+
+    const AI_PROVIDERS = {
+        openai: { label: 'OpenAI', defaultBaseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-5.6-luna', protocol: 'responses' },
+        deepseek: { label: 'DeepSeek', defaultBaseUrl: 'https://api.deepseek.com', defaultModel: 'deepseek-v4-flash', protocol: 'responses' },
+        custom: { label: 'Custom / OpenAI Compatible', defaultBaseUrl: '', defaultModel: '', protocol: 'responses' }
     };
 
-    let apiConfig = JSON.parse(localStorage.getItem('en_v3_api_config') || JSON.stringify(DEFAULT_API_CONFIG));
+    function getDefaultApiConfig() { const p = AI_PROVIDERS.openai; return { provider: 'openai', baseUrl: p.defaultBaseUrl, apiKey: '', model: p.defaultModel, protocol: p.protocol, reasoning: 'low' }; }
+
+    function normalizeBaseUrl(baseUrl) { return (baseUrl || '').trim().replace(/\/+$/, '').replace(/\/(responses|chat\/completions)$/, '').replace(/\/v1\/v1$/, '/v1'); }
+
+    function normalizeLegacyApiConfig(saved) { if (!saved || typeof saved !== 'object') return null; const apiKey = typeof saved.apiKey === 'string' ? saved.apiKey : (typeof saved.key === 'string' ? saved.key : ''); const rawUrl = typeof saved.baseUrl === 'string' ? saved.baseUrl : (typeof saved.url === 'string' ? saved.url : ''); const model = typeof saved.model === 'string' ? saved.model : ''; const reasoning = typeof saved.reasoning === 'string' ? saved.reasoning : 'low'; if (!apiKey && !rawUrl && !model) return null; const provider = rawUrl.includes('deepseek.com') ? 'deepseek' : 'openai'; return { ...getDefaultApiConfig(), provider, baseUrl: normalizeBaseUrl(rawUrl || AI_PROVIDERS[provider].defaultBaseUrl), apiKey, model: model || AI_PROVIDERS[provider].defaultModel, protocol: rawUrl.includes('/chat/completions') ? 'chat' : 'responses', reasoning }; }
+
+    function loadApiConfig() { try { const raw = localStorage.getItem(AI_CONFIG_STORAGE_KEY); const saved = raw ? JSON.parse(raw) : null; const legacyRaw = localStorage.getItem(LEGACY_AI_CONFIG_STORAGE_KEY); const migrated = saved || normalizeLegacyApiConfig(legacyRaw ? JSON.parse(legacyRaw) : null); apiConfig = { ...getDefaultApiConfig(), ...(migrated || {}) }; apiConfig.provider = AI_PROVIDERS[apiConfig.provider] ? apiConfig.provider : 'openai'; apiConfig.baseUrl = normalizeBaseUrl(apiConfig.baseUrl || AI_PROVIDERS[apiConfig.provider].defaultBaseUrl); apiConfig.protocol = apiConfig.protocol === 'chat' ? 'chat' : 'responses'; apiConfig.apiKey = typeof apiConfig.apiKey === 'string' ? apiConfig.apiKey : ''; if (!apiConfig.model) apiConfig.model = AI_PROVIDERS[apiConfig.provider].defaultModel; if (!raw && migrated) { localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig)); localStorage.removeItem(LEGACY_AI_CONFIG_STORAGE_KEY); } } catch (e) { console.error('Failed to load local AI config'); apiConfig = getDefaultApiConfig(); } }
+
+    function renderApiConfigForm() { const provider = document.getElementById('ai-provider'); const baseUrl = document.getElementById('ai-api-url'); const apiKey = document.getElementById('ai-api-key'); const model = document.getElementById('ai-model'); const protocol = document.getElementById('ai-protocol'); const reasoning = document.getElementById('ai-reasoning'); if (!provider || !baseUrl || !apiKey || !model || !protocol || !reasoning) return; provider.value = apiConfig.provider; baseUrl.value = apiConfig.baseUrl || ''; apiKey.value = apiConfig.apiKey || ''; model.value = apiConfig.model || ''; protocol.value = apiConfig.protocol || 'responses'; reasoning.value = apiConfig.reasoning || 'low'; }
+
+    function handleAIProviderChange() { const providerKey = document.getElementById('ai-provider').value; const provider = AI_PROVIDERS[providerKey] || AI_PROVIDERS.openai; document.getElementById('ai-api-url').value = provider.defaultBaseUrl; document.getElementById('ai-model').value = provider.defaultModel; document.getElementById('ai-protocol').value = provider.protocol; }
+
+    function buildAIEndpoint(config) { const baseUrl = normalizeBaseUrl(config.baseUrl || AI_PROVIDERS[config.provider]?.defaultBaseUrl || ''); if (!baseUrl) throw new Error('Base URL is empty'); return config.protocol === 'chat' ? baseUrl + '/chat/completions' : baseUrl + '/responses'; }
+
+    function buildRequestBody(provider, config, prompt) { if (config.protocol === 'chat') return { model: config.model, messages: [{ role: 'user', content: prompt }] }; const body = { model: config.model, input: prompt }; if (provider === 'openai' && config.reasoning && config.reasoning !== 'none') body.reasoning = { effort: config.reasoning }; return body; }
+
+    function extractAIText(responseJson) { if (!responseJson) return ''; if (typeof responseJson.output_text === 'string') return responseJson.output_text; if (Array.isArray(responseJson.output)) { return responseJson.output.map(item => { if (typeof item.content === 'string') return item.content; if (!Array.isArray(item.content)) return ''; return item.content.map(part => part.text || part.output_text || '').join(''); }).join(''); } return responseJson.choices?.[0]?.message?.content || responseJson.choices?.[0]?.text || ''; }
+
+    async function callAI(prompt) { const config = { ...apiConfig, baseUrl: normalizeBaseUrl(apiConfig.baseUrl) }; const provider = AI_PROVIDERS[config.provider] ? config.provider : 'custom'; const endpoint = buildAIEndpoint(config); const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(buildRequestBody(provider, config, prompt)) }); const data = await res.json().catch(() => ({})); if (!res.ok) { const message = data.error?.message || data.message || res.statusText || 'Request failed'; throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API error (' + res.status + '): ' + message); } const text = extractAIText(data).trim(); if (!text) throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API returned no text'); return text; }
+
+    let apiConfig = getDefaultApiConfig();
 
     // 默认提示词
     const DEFAULT_PROMPTS = {
@@ -4626,18 +4646,9 @@ async function saveManualStudySession() {
         setupStudyTimerGestures();
         setupStudyAnalyticsControls();
 
-        // 加载 API 配置
-        document.getElementById('ai-api-url').value =
-            apiConfig.url || 'https://api.openai.com/v1/responses';
-
-        document.getElementById('ai-api-key').value =
-            apiConfig.key || '';
-
-        document.getElementById('ai-model').value =
-            apiConfig.model || 'gpt-5.6-luna';
-
-        document.getElementById('ai-reasoning').value =
-            apiConfig.reasoning || 'low';
+        // 加载本地 AI 配置；API Key 只从 localStorage 恢复，不从登录表单或云端读取。
+        loadApiConfig();
+        renderApiConfigForm();
         
         document.getElementById('set-new').value = settings.new;
         document.getElementById('set-rev').value = settings.rev;
@@ -5379,7 +5390,8 @@ async function saveManualStudySession() {
         document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active')); 
         document.getElementById(`panel-${p}`).classList.remove('hidden'); 
         document.getElementById(`nav-${p}`).classList.add('active'); 
-        if(p==='lib') renderLib(); 
+        if(p==='lib') renderLib();
+        if(p==='add') renderApiConfigForm(); 
         if(p==='sentences' && sentenceSession.items.length === 0) {
             const pool = shuffleArray(buildSentencePool());
             sentenceSession = { items: pool, index: 0, revealed: false, limit: null, viewed: 0 };
@@ -5562,136 +5574,57 @@ async function saveManualStudySession() {
 
     function saveApiConfig() {
     apiConfig = {
-        url: document.getElementById('ai-api-url').value.trim(),
-        key: document.getElementById('ai-api-key').value.trim(),
-        model: document.getElementById('ai-model').value,
+        provider: document.getElementById('ai-provider').value,
+        baseUrl: normalizeBaseUrl(document.getElementById('ai-api-url').value),
+        apiKey: document.getElementById('ai-api-key').value,
+        model: document.getElementById('ai-model').value.trim(),
+        protocol: document.getElementById('ai-protocol').value,
         reasoning: document.getElementById('ai-reasoning').value
     };
-
-    localStorage.setItem(
-        'en_v3_api_config',
-        JSON.stringify(apiConfig)
-    );
-
+    localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig));
+    renderApiConfigForm();
     const status = document.getElementById('ai-status');
-
-    status.textContent =
-        currentLang === 'ja'
-        ? 'API設定を保存しました'
-        : 'API config saved';
-
-    setTimeout(() => {
-        status.textContent = '';
-    }, 2000);
+    status.textContent = getLanguageText({ en: 'API settings saved locally', ja: 'API設定をこのブラウザに保存しました', pt: 'Configurações da API salvas localmente', ko: 'API 설정이 이 브라우저에 저장되었습니다', es: 'Configuración de API guardada localmente' });
+    setTimeout(() => { status.textContent = ''; }, 2000);
 }
 
-
+function clearApiConfig() {
+    if (!confirm(getLanguageText({ en: 'Clear local AI API settings on this browser?', ja: 'このブラウザのAI API設定を削除しますか？', pt: 'Limpar as configurações locais da API neste navegador?', ko: '이 브라우저의 로컬 AI API 설정을 삭제할까요?', es: '¿Borrar la configuración local de API en este navegador?' }))) return;
+    localStorage.removeItem(AI_CONFIG_STORAGE_KEY);
+    apiConfig = getDefaultApiConfig();
+    renderApiConfigForm();
+    const status = document.getElementById('ai-status');
+    status.textContent = getLanguageText({ en: 'Local API settings cleared', ja: 'ローカルAPI設定を削除しました', pt: 'Configurações locais da API limpas', ko: '로컬 API 설정이 삭제되었습니다', es: 'Configuración local de API borrada' });
+    setTimeout(() => { status.textContent = ''; }, 2000);
+}
 
     async function aiImport() {
-        const url = (document.getElementById('ai-api-url').value || '').trim();
-        const key = (document.getElementById('ai-api-key').value || '').trim();
-        const model = document.getElementById('ai-model').value || 'gemini-3.5-flash-lite';
-        const reasoning = document.getElementById('ai-reasoning').value || 'low';
+        loadApiConfig();
+        renderApiConfigForm();
         const userText = document.getElementById('import-area').value.trim();
         const promptText = document.getElementById('prompt-content').value.trim();
         const statusEl = document.getElementById('ai-status');
-
-        if (!key) {
-            statusEl.textContent = currentLang === 'ja' ? 'API KEYを入力してください' : 'Please enter API KEY';
+        if (!apiConfig.apiKey) {
+            statusEl.textContent = getLanguageText({ en: 'Please enter API KEY', ja: 'API KEYを入力してください', pt: 'Insira a API KEY', ko: 'API KEY를 입력하세요', es: 'Introduce la API KEY' });
             return;
         }
         if (!userText || !promptText) {
-            statusEl.textContent = currentLang === 'ja' ? 'テキストまたはプロンプトが空です' : 'Text or prompt is empty';
+            statusEl.textContent = getLanguageText({ en: 'Text or prompt is empty', ja: 'テキストまたはプロンプトが空です', pt: 'Texto ou prompt vazio', ko: '텍스트 또는 프롬프트가 비어 있습니다', es: 'El texto o el prompt está vacío' });
             return;
         }
-
-        statusEl.textContent = `AI 处理中... (${model})`;
+        statusEl.textContent = (AI_PROVIDERS[apiConfig.provider]?.label || 'API') + ' processing... (' + apiConfig.model + ')';
         const fullPrompt = promptText + "\n\n下面是需要整理的文本：\n" + userText;
-
         try {
-            let content = '';
-
-            // 判断是否使用 Google 原生 Gemini REST API 格式
-            const isGeminiNative = model.startsWith('gemini') && (url.includes('googleapis.com') || !url);
-
-            if (isGeminiNative) {
-                // 直连 Google Gemini 官方 API
-                const requestUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-                const res = await fetch(requestUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: fullPrompt }] }]
-                    })
-                });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(`HTTP ${res.status}: ${errData.error?.message || await res.text()}`);
-                }
-
-                const data = await res.json();
-                content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-            } else {
-                // 使用 OpenAI / 中转站 / 自定义 API 格式
-                const targetUrl = url || 'https://api.openai.com/v1/chat/completions';
-                const isResponsesApi = targetUrl.includes('/responses');
-                let requestBody;
-
-                if (isResponsesApi) {
-                    requestBody = {
-                        model: model,
-                        reasoning: { effort: reasoning },
-                        input: fullPrompt
-                    };
-                } else {
-                    requestBody = {
-                        model: model,
-                        messages: [{ role: 'user', content: fullPrompt }]
-                    };
-                }
-
-                const res = await fetch(targetUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + key
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    throw new Error(`HTTP ${res.status}: ${errData.error?.message || await res.text()}`);
-                }
-
-                const data = await res.json();
-                content = data.output_text || data.choices?.[0]?.message?.content;
-
-                if (!content && data.output) {
-                    for (const item of data.output) {
-                        if (!item.content) continue;
-                        for (const part of item.content) {
-                            if (part.type === 'output_text' && part.text) {
-                                content = (content || '') + part.text;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (!content) throw new Error('AI 返回结果为空');
-
+            const content = await callAI(fullPrompt);
             document.getElementById('import-area').value = content;
-            statusEl.textContent = 'AI 完成，正在解析...';
+            statusEl.textContent = getLanguageText({ en: 'AI complete, parsing...', ja: 'AI完了、解析中...', pt: 'IA concluída, analisando...', ko: 'AI 완료, 분석 중...', es: 'IA completada, analizando...' });
             showImportConfirm();
-
         } catch (e) {
-            console.error(e);
-            statusEl.textContent = 'API 错误：' + e.message;
+            console.error('AI request failed:', e.message);
+            statusEl.textContent = e.message;
         }
     }
-    
+
     async function copyPrompt(e) { 
         const promptText = document.getElementById('prompt-content').value.trim();
         const importArea = document.getElementById('import-area');
@@ -5736,13 +5669,14 @@ function showLoginPage(message = "") {
 
             <form id="woi-login-form">
                 <label style="display:block; margin-bottom:6px;">
-                    Username
+                    Email
                 </label>
 
                 <input
-                    id="woi-username"
-                    type="text"
-                    autocomplete="username"
+                    id="login-email"
+                    name="login-email"
+                    type="email"
+                    autocomplete="email"
                     required
                     style="
                         box-sizing:border-box;
@@ -5760,7 +5694,8 @@ function showLoginPage(message = "") {
                 </label>
 
                 <input
-                    id="woi-password"
+                    id="login-password"
+                    name="login-password"
                     type="password"
                     autocomplete="current-password"
                     required
@@ -5815,10 +5750,10 @@ async function loginWoi(event) {
     event.preventDefault();
 
     const email =
-        document.getElementById("woi-username").value.trim();
+        document.getElementById("login-email").value.trim();
 
     const password =
-        document.getElementById("woi-password").value;
+        document.getElementById("login-password").value;
 
     const message =
         document.getElementById("woi-login-message");
