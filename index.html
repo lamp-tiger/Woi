@@ -2276,8 +2276,7 @@ function getImportCountUnit() {
                 if (typeof part?.text === 'string') texts.push(part.text);
             }
         }
-        return texts.join('
-').trim();
+        return texts.join('\n').trim();
     }
 
     async function callGemini(prompt) {
