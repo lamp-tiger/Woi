@@ -5172,7 +5172,7 @@ async function saveManualStudySession() {
                 break;
             case 'GEN_VERIFY':
                 html += `<span class="phase-tag">${t('phaseVerify')}</span>
-                         <div class="diff-container">${getDiffHtml(session.lastInput, word.genJP)}</div>
+                         ${!isMobile ? `<div class="diff-container">${getDiffHtml(session.lastInput, word.genJP)}</div>` : ''}
                          <div class="answer-reveal"><b>${word.genJP}</b> <button class="btn-action" style="padding:3px 8px; margin-left:6px;" onclick="speakLearningSentence('gen')">🔊</button><br>${word.genCN}</div>`;
                 break;
             case 'ORIG_PROMPT':
@@ -5183,7 +5183,7 @@ async function saveManualStudySession() {
                 break;
             case 'ORIG_VERIFY':
                 html += `<span class="phase-tag">${t('phaseVerify')}</span>
-                         <div class="diff-container">${getDiffHtml(session.lastInput, word.origJP)}</div>
+                         ${!isMobile ? `<div class="diff-container">${getDiffHtml(session.lastInput, word.origJP)}</div>` : ''}
                          <div class="answer-reveal"><b>${word.origJP}</b> <button class="btn-action" style="padding:3px 8px; margin-left:6px;" onclick="speakLearningSentence('orig')">🔊</button><br>${word.origCN}</div>`;
                 break;
         }
