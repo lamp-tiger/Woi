@@ -1400,9 +1400,9 @@ SUPABASE 数据库表结构说明
 
 <label style="font-size:13px;">Reasoning</label>
 <select id="ai-reasoning" style="padding:8px; width:100%; box-sizing:border-box;">
-    <option value="none">None（最省）</option>
-    <option value="low" selected>Low（推荐）</option>
-    <option value="medium">Medium</option>
+    <option value="none" selected>Off（默认）</option>
+    <option value="low">Low</option>
+    <option value="high">High（手动选择）</option>
 </select>
 
 </div>
@@ -2059,6 +2059,7 @@ function getImportCountUnit() {
 
     const AI_CONFIG_STORAGE_KEY = 'woi.ai.config.v2';
     const LEGACY_AI_CONFIG_STORAGE_KEY = 'en_v3_api_config';
+    const MAX_AI_IMPORT_WORDS = 15;
 
     const AI_PROVIDERS = {
         openai: { label: 'OpenAI', defaultBaseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-5.6-luna', protocol: 'responses' },
@@ -2066,25 +2067,123 @@ function getImportCountUnit() {
         custom: { label: 'Custom / OpenAI Compatible', defaultBaseUrl: '', defaultModel: '', protocol: 'responses' }
     };
 
-    function getDefaultApiConfig() { const p = AI_PROVIDERS.openai; return { provider: 'openai', baseUrl: p.defaultBaseUrl, apiKey: '', model: p.defaultModel, protocol: p.protocol, reasoning: 'low' }; }
+    function getDefaultApiConfig() { const p = AI_PROVIDERS.openai; return { provider: 'openai', baseUrl: p.defaultBaseUrl, apiKey: '', model: p.defaultModel, protocol: p.protocol, reasoning: 'none' }; }
 
     function normalizeBaseUrl(baseUrl) { return (baseUrl || '').trim().replace(/\/+$/, '').replace(/\/(responses|chat\/completions)$/, '').replace(/\/v1\/v1$/, '/v1'); }
 
-    function normalizeLegacyApiConfig(saved) { if (!saved || typeof saved !== 'object') return null; const apiKey = typeof saved.apiKey === 'string' ? saved.apiKey : (typeof saved.key === 'string' ? saved.key : ''); const rawUrl = typeof saved.baseUrl === 'string' ? saved.baseUrl : (typeof saved.url === 'string' ? saved.url : ''); const model = typeof saved.model === 'string' ? saved.model : ''; const reasoning = typeof saved.reasoning === 'string' ? saved.reasoning : 'low'; if (!apiKey && !rawUrl && !model) return null; const provider = rawUrl.includes('deepseek.com') ? 'deepseek' : 'openai'; return { ...getDefaultApiConfig(), provider, baseUrl: normalizeBaseUrl(rawUrl || AI_PROVIDERS[provider].defaultBaseUrl), apiKey, model: model || AI_PROVIDERS[provider].defaultModel, protocol: rawUrl.includes('/chat/completions') ? 'chat' : 'responses', reasoning }; }
+    function normalizeLegacyApiConfig(saved) { if (!saved || typeof saved !== 'object') return null; const apiKey = typeof saved.apiKey === 'string' ? saved.apiKey : (typeof saved.key === 'string' ? saved.key : ''); const rawUrl = typeof saved.baseUrl === 'string' ? saved.baseUrl : (typeof saved.url === 'string' ? saved.url : ''); const model = typeof saved.model === 'string' ? saved.model : ''; const reasoning = typeof saved.reasoning === 'string' ? saved.reasoning : 'none'; if (!apiKey && !rawUrl && !model) return null; const provider = rawUrl.includes('deepseek.com') ? 'deepseek' : 'openai'; return { ...getDefaultApiConfig(), provider, baseUrl: normalizeBaseUrl(rawUrl || AI_PROVIDERS[provider].defaultBaseUrl), apiKey, model: model || AI_PROVIDERS[provider].defaultModel, protocol: rawUrl.includes('/chat/completions') ? 'chat' : 'responses', reasoning }; }
 
-    function loadApiConfig() { try { const raw = localStorage.getItem(AI_CONFIG_STORAGE_KEY); const saved = raw ? JSON.parse(raw) : null; const legacyRaw = localStorage.getItem(LEGACY_AI_CONFIG_STORAGE_KEY); const migrated = saved || normalizeLegacyApiConfig(legacyRaw ? JSON.parse(legacyRaw) : null); apiConfig = { ...getDefaultApiConfig(), ...(migrated || {}) }; apiConfig.provider = AI_PROVIDERS[apiConfig.provider] ? apiConfig.provider : 'openai'; apiConfig.baseUrl = normalizeBaseUrl(apiConfig.baseUrl || AI_PROVIDERS[apiConfig.provider].defaultBaseUrl); apiConfig.protocol = apiConfig.protocol === 'chat' ? 'chat' : 'responses'; apiConfig.apiKey = typeof apiConfig.apiKey === 'string' ? apiConfig.apiKey : ''; if (!apiConfig.model) apiConfig.model = AI_PROVIDERS[apiConfig.provider].defaultModel; if (!raw && migrated) { localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig)); localStorage.removeItem(LEGACY_AI_CONFIG_STORAGE_KEY); } } catch (e) { console.error('Failed to load local AI config'); apiConfig = getDefaultApiConfig(); } }
+    function loadApiConfig() { try { const raw = localStorage.getItem(AI_CONFIG_STORAGE_KEY); const saved = raw ? JSON.parse(raw) : null; const legacyRaw = localStorage.getItem(LEGACY_AI_CONFIG_STORAGE_KEY); const migrated = saved || normalizeLegacyApiConfig(legacyRaw ? JSON.parse(legacyRaw) : null); apiConfig = { ...getDefaultApiConfig(), ...(migrated || {}) }; apiConfig.provider = AI_PROVIDERS[apiConfig.provider] ? apiConfig.provider : 'openai'; apiConfig.baseUrl = normalizeBaseUrl(apiConfig.baseUrl || AI_PROVIDERS[apiConfig.provider].defaultBaseUrl); apiConfig.protocol = apiConfig.protocol === 'chat' ? 'chat' : 'responses'; if (!['none', 'low', 'high'].includes(apiConfig.reasoning)) apiConfig.reasoning = 'none'; apiConfig.apiKey = typeof apiConfig.apiKey === 'string' ? apiConfig.apiKey : ''; if (!apiConfig.model) apiConfig.model = AI_PROVIDERS[apiConfig.provider].defaultModel; if (!raw && migrated) { localStorage.setItem(AI_CONFIG_STORAGE_KEY, JSON.stringify(apiConfig)); localStorage.removeItem(LEGACY_AI_CONFIG_STORAGE_KEY); } } catch (e) { console.error('Failed to load local AI config'); apiConfig = getDefaultApiConfig(); } }
 
-    function renderApiConfigForm() { const provider = document.getElementById('ai-provider'); const baseUrl = document.getElementById('ai-api-url'); const apiKey = document.getElementById('ai-api-key'); const model = document.getElementById('ai-model'); const protocol = document.getElementById('ai-protocol'); const reasoning = document.getElementById('ai-reasoning'); if (!provider || !baseUrl || !apiKey || !model || !protocol || !reasoning) return; provider.value = apiConfig.provider; baseUrl.value = apiConfig.baseUrl || ''; apiKey.value = apiConfig.apiKey || ''; model.value = apiConfig.model || ''; protocol.value = apiConfig.protocol || 'responses'; reasoning.value = apiConfig.reasoning || 'low'; }
+    function renderApiConfigForm() { const provider = document.getElementById('ai-provider'); const baseUrl = document.getElementById('ai-api-url'); const apiKey = document.getElementById('ai-api-key'); const model = document.getElementById('ai-model'); const protocol = document.getElementById('ai-protocol'); const reasoning = document.getElementById('ai-reasoning'); if (!provider || !baseUrl || !apiKey || !model || !protocol || !reasoning) return; provider.value = apiConfig.provider; baseUrl.value = apiConfig.baseUrl || ''; apiKey.value = apiConfig.apiKey || ''; model.value = apiConfig.model || ''; protocol.value = apiConfig.protocol || 'responses'; reasoning.value = apiConfig.reasoning || 'none'; }
 
     function handleAIProviderChange() { const providerKey = document.getElementById('ai-provider').value; const provider = AI_PROVIDERS[providerKey] || AI_PROVIDERS.openai; document.getElementById('ai-api-url').value = provider.defaultBaseUrl; document.getElementById('ai-model').value = provider.defaultModel; document.getElementById('ai-protocol').value = provider.protocol; }
 
     function buildAIEndpoint(config) { const baseUrl = normalizeBaseUrl(config.baseUrl || AI_PROVIDERS[config.provider]?.defaultBaseUrl || ''); if (!baseUrl) throw new Error('Base URL is empty'); return config.protocol === 'chat' ? baseUrl + '/chat/completions' : baseUrl + '/responses'; }
 
+    function getDeepSeekVocabularyInstruction() {
+        const japaneseGate = currentLang === 'ja' ? `
+
+For Japanese vocabulary selection:
+
+The user's JLPT level is a HARD FILTER.
+
+Example:
+
+If the user says N4:
+- exclude obvious N5 vocabulary
+- exclude obvious N4 vocabulary
+- select vocabulary that is reasonably above N4
+- prioritize N3/N2/N1-level vocabulary and expressions
+- do not include basic words merely because they appear in a complex sentence
+
+IMPORTANT:
+Sentence difficulty does not automatically make every word in that sentence difficult.
+Judge EACH vocabulary item individually.
+If a word itself is elementary, exclude it even when the surrounding sentence is difficult.
+Do not treat kanji, word length, or sentence difficulty as automatic evidence that a word is difficult.` : '';
+
+        return `You are a vocabulary selection engine.
+
+Follow the user's stated language level strictly.
+
+Your task is NOT to extract every unknown word.
+
+Select ONLY vocabulary or expressions that are genuinely more difficult than the user's stated level.
+
+STRICT RULES:
+
+1. Do NOT extract every word from the text.
+2. Do NOT include basic vocabulary that is at or below the user's stated level.
+3. A word must be excluded if you are uncertain whether it is sufficiently difficult.
+4. Prefer fewer, higher-value items.
+5. The maximum number of vocabulary items is ${MAX_AI_IMPORT_WORDS}.
+6. Returning fewer than ${MAX_AI_IMPORT_WORDS} is correct.
+7. Returning zero items is correct if nothing qualifies.
+8. NEVER add easy words merely to reach the limit.
+9. Do not treat grammatical particles, basic auxiliary verbs, common function words, names, numbers, or ordinary elementary vocabulary as difficult vocabulary unless the user's instruction explicitly requests them.
+10. Preserve multi-word expressions as one item when their meaning depends on the expression as a whole.
+11. Do not split one expression into several vocabulary items merely to increase the count.
+12. Before producing the final answer, silently verify every selected item against the user's stated level.
+13. If more than ${MAX_AI_IMPORT_WORDS} candidates qualify, rank them by learning value and output ONLY the best ${MAX_AI_IMPORT_WORDS}.
+14. The limit of ${MAX_AI_IMPORT_WORDS} is absolute.
+15. Follow the exact output format required by the user's prompt.
+
+When the user's prompt says "all content above my level", this means:
+"all IMPORTANT learning-worthy difficult content, subject to the maximum item limit".
+It does NOT mean exhaustive token-by-token extraction.
+The maximum of ${MAX_AI_IMPORT_WORDS} always takes precedence.
+
+Use this internal process without revealing it:
+Step 1: Identify possible difficult vocabulary internally.
+Step 2: Reject candidates that are too easy, below/equal to the user's level, low learning value, duplicate, or merely inflected forms of another selected item.
+Step 3: Rank remaining candidates by learning value.
+Step 4: Return at most ${MAX_AI_IMPORT_WORDS}.
+
+IMPORTANT:
+${MAX_AI_IMPORT_WORDS} is a MAXIMUM, not a TARGET.
+A short answer containing only truly difficult items is better than a long answer containing easy items.${japaneseGate}`;
+    }
+
+    function buildAIImportPrompt(userPrompt, userText) {
+        const body = userPrompt + "\n\n下面是需要整理的文本：\n" + userText;
+        if (apiConfig.provider !== 'deepseek') return body;
+        return getDeepSeekVocabularyInstruction() + "\n\nUSER PROMPT:\n" + body;
+    }
+
+    function buildDeepSeekCorrectivePrompt(previousCount, userPrompt, userText) {
+        return getDeepSeekVocabularyInstruction() + `
+
+Your previous response violated the instructions.
+
+You returned ${previousCount} vocabulary items.
+
+The absolute maximum is ${MAX_AI_IMPORT_WORDS}.
+
+Re-evaluate the candidates.
+
+Remove:
+- vocabulary at or below the user's level
+- elementary vocabulary
+- low-value vocabulary
+- duplicates
+- unnecessary variants
+
+Return ONLY the most valuable items that genuinely exceed the user's stated level.
+
+Maximum: ${MAX_AI_IMPORT_WORDS}.
+
+Returning fewer than ${MAX_AI_IMPORT_WORDS} is preferred when appropriate.
+
+USER PROMPT AND ORIGINAL TEXT:
+` + userPrompt + "\n\n下面是需要整理的文本：\n" + userText;
+    }
+
     function buildRequestBody(provider, config, prompt) { if (config.protocol === 'chat') return { model: config.model, messages: [{ role: 'user', content: prompt }] }; const body = { model: config.model, input: prompt }; if (provider === 'openai' && config.reasoning && config.reasoning !== 'none') body.reasoning = { effort: config.reasoning }; return body; }
 
     function extractAIText(responseJson) { if (!responseJson) return ''; if (typeof responseJson.output_text === 'string') return responseJson.output_text; if (Array.isArray(responseJson.output)) { return responseJson.output.map(item => { if (typeof item.content === 'string') return item.content; if (!Array.isArray(item.content)) return ''; return item.content.map(part => part.text || part.output_text || '').join(''); }).join(''); } return responseJson.choices?.[0]?.message?.content || responseJson.choices?.[0]?.text || ''; }
 
-    async function callAI(prompt) { const config = { ...apiConfig, baseUrl: normalizeBaseUrl(apiConfig.baseUrl) }; const provider = AI_PROVIDERS[config.provider] ? config.provider : 'custom'; const endpoint = buildAIEndpoint(config); const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(buildRequestBody(provider, config, prompt)) }); const data = await res.json().catch(() => ({})); if (!res.ok) { const message = data.error?.message || data.message || res.statusText || 'Request failed'; throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API error (' + res.status + '): ' + message); } const text = extractAIText(data).trim(); if (!text) throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API returned no text'); return text; }
+    async function callAI(prompt, configOverride = apiConfig) { const config = { ...configOverride, baseUrl: normalizeBaseUrl(configOverride.baseUrl) }; const provider = AI_PROVIDERS[config.provider] ? config.provider : 'custom'; const endpoint = buildAIEndpoint(config); const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + config.apiKey }, body: JSON.stringify(buildRequestBody(provider, config, prompt)) }); const data = await res.json().catch(() => ({})); if (!res.ok) { const message = data.error?.message || data.message || res.statusText || 'Request failed'; throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API error (' + res.status + '): ' + message); } const text = extractAIText(data).trim(); if (!text) throw new Error((AI_PROVIDERS[provider]?.label || 'API') + ' API returned no text'); return text; }
 
     let apiConfig = getDefaultApiConfig();
 
@@ -4801,12 +4900,11 @@ async function saveManualStudySession() {
     }
 
     // 显示导入确认对话框
-    function showImportConfirm() {
-        const text = document.getElementById('import-area').value.replace(/\*+/g, '');
-        const blocks = text.split(/\n(?=[①-⑳㉑-㉟㊱-㊵])/);
-        
-        pendingImportWords = [];
-        
+    function parseAIImportWords(text) {
+        const cleanedText = (text || '').replace(/\*+/g, '');
+        const blocks = cleanedText.split(/\n(?=[①-⑳㉑-㉟㊱-㊵])/);
+        const parsedWords = [];
+
         for (const block of blocks) {
             const lines = block.split('\n').map(l => l.trim());
             let w = { id: crypto.randomUUID(), status: 'new', deleted: false, count: 0, nextTime: Date.now() };
@@ -4817,9 +4915,22 @@ async function saveManualStudySession() {
                 if (l.startsWith('原句翻译：') || l.startsWith('原文訳：') || l.startsWith('Original Trans:')) w.origCN = l.replace(/^(原[句文]翻[译訳]：|原文訳：|Original Trans:)/, '').trim();
                 if (l.startsWith('例句翻译：') || l.startsWith('例文訳：') || l.startsWith('Example Trans:')) w.genCN = l.replace(/^(例[句文]翻[译訳]：|例文訳：|Example Trans:)/, '').trim();
             });
-            if (w.word) pendingImportWords.push(w);
+            if (w.word) parsedWords.push(w);
         }
-        
+
+        return parsedWords;
+    }
+
+    function showImportConfirm() {
+        if (pendingImportWords.length === 0) {
+            pendingImportWords = parseAIImportWords(document.getElementById('import-area').value);
+        }
+
+        if (pendingImportWords.length > MAX_AI_IMPORT_WORDS) {
+            console.warn(`[AI] ${apiConfig.provider === 'deepseek' ? 'DeepSeek' : 'Provider'} violated vocabulary limit: ${pendingImportWords.length} items returned.`);
+            pendingImportWords = pendingImportWords.slice(0, MAX_AI_IMPORT_WORDS);
+        }
+
         if (pendingImportWords.length === 0) {
             alert(currentLang === 'ja' ? '単語が見つかりませんでした' : 'No words found');
             return;
@@ -5613,11 +5724,31 @@ function clearApiConfig() {
             return;
         }
         statusEl.textContent = (AI_PROVIDERS[apiConfig.provider]?.label || 'API') + ' processing... (' + apiConfig.model + ')';
-        const fullPrompt = promptText + "\n\n下面是需要整理的文本：\n" + userText;
         try {
-            const content = await callAI(fullPrompt);
+            let content = await callAI(buildAIImportPrompt(promptText, userText));
+            let parsedWords = parseAIImportWords(content);
+            let retried = false;
+
+            if (apiConfig.provider === 'deepseek' && parsedWords.length > MAX_AI_IMPORT_WORDS) {
+                console.warn(`[AI] DeepSeek violated vocabulary limit: ${parsedWords.length} items returned.`);
+                retried = true;
+                statusEl.textContent = 'DeepSeek returned too many items; correcting once...';
+                content = await callAI(buildDeepSeekCorrectivePrompt(parsedWords.length, promptText, userText));
+                parsedWords = parseAIImportWords(content);
+                if (parsedWords.length > MAX_AI_IMPORT_WORDS) {
+                    console.warn(`[AI] DeepSeek did not follow the vocabulary limit after retry: ${parsedWords.length} items returned.`);
+                    statusEl.textContent = 'DeepSeek did not follow the vocabulary limit.';
+                }
+            }
+
+            if (parsedWords.length > MAX_AI_IMPORT_WORDS) {
+                console.warn(`[AI] ${apiConfig.provider === 'deepseek' ? 'DeepSeek' : 'Provider'} violated vocabulary limit: ${parsedWords.length} items returned.`);
+                parsedWords = parsedWords.slice(0, MAX_AI_IMPORT_WORDS);
+            }
+
             document.getElementById('import-area').value = content;
-            statusEl.textContent = getLanguageText({ en: 'AI complete, parsing...', ja: 'AI完了、解析中...', pt: 'IA concluída, analisando...', ko: 'AI 완료, 분석 중...', es: 'IA completada, analizando...' });
+            pendingImportWords = parsedWords;
+            statusEl.textContent = getLanguageText({ en: retried ? 'AI corrected, parsing...' : 'AI complete, parsing...', ja: retried ? 'AI修正完了、解析中...' : 'AI完了、解析中...', pt: retried ? 'IA corrigida, analisando...' : 'IA concluída, analisando...', ko: retried ? 'AI 수정 완료, 분석 중...' : 'AI 완료, 분석 중...', es: retried ? 'IA corregida, analizando...' : 'IA completada, analizando...' });
             showImportConfirm();
         } catch (e) {
             console.error('AI request failed:', e.message);
