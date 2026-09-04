@@ -233,6 +233,7 @@
         }
         .confirm-stats .ja-count { color: #e74c3c; font-weight: bold; }
         .confirm-stats .en-count { color: #3498db; font-weight: bold; }
+        .confirm-stats .pt-count { color: #27ae60; font-weight: bold; }
         .confirm-buttons {
             display: flex;
             gap: 10px;
@@ -998,25 +999,39 @@ SUPABASE 数据库表结构说明
    - deleted: boolean
    - created_at: timestamptz
 
-3. learning_resources - 学习资源表
+3. vocab_portuguese - 葡萄牙语词汇表（结构与vocab_words完全相同）
    - id: uuid (primary key)
    - user_id: uuid
-   - lang: text (语言: 'en' 或 'ja')
+   - word: text (葡萄牙语单词/短语)
+   - orig_jp: text (原文句子)
+   - gen_jp: text (例句)
+   - orig_cn: text (原文翻译)
+   - gen_cn: text (例句翻译)
+   - status: text
+   - next_time: timestamptz
+   - review_count: integer
+   - deleted: boolean
+   - created_at: timestamptz
+
+4. learning_resources - 学习资源表
+   - id: uuid (primary key)
+   - user_id: uuid
+   - lang: text (语言: 'en'、'ja' 或 'pt')
    - name: text (资源名称)
    - url: text (资源链接)
    - created_at: timestamptz
 
-4. ai_prompts - AI提示词表
+5. ai_prompts - AI提示词表
    - id: uuid (primary key)
    - user_id: uuid
-   - lang: text (语言: 'en' 或 'ja')
+   - lang: text (语言: 'en'、'ja' 或 'pt')
    - prompt_text: text (提示词内容)
    - updated_at: timestamptz
 
-5. daily_stats - 每日学习进度表
+6. daily_stats - 每日学习进度表
    - id: uuid (primary key)
    - user_id: uuid (默认 '00000000-0000-0000-0000-000000000000')
-   - lang: text (语言: 'en' 或 'ja')
+   - lang: text (语言: 'en'、'ja' 或 'pt')
    - date_str: text (日期字符串, 如 '2026/4/17')
    - target_new: integer (新词目标数)
    - target_rev: integer (复习目标数)
@@ -1035,6 +1050,7 @@ SUPABASE 数据库表结构说明
     <div class="lang-left">
         <button class="lang-btn" id="btn-en" onclick="switchLang('en')">En</button>
         <button class="lang-btn" id="btn-ja" onclick="switchLang('ja')">日</button>
+        <button class="lang-btn" id="btn-pt" onclick="switchLang('pt')">Pt</button>
     </div>
 
     <div id="analytics-title" class="analytics-title hidden"></div>
@@ -1137,6 +1153,7 @@ SUPABASE 数据库表结构说明
             <button type="button" data-lang="all" class="active">All</button>
             <button type="button" data-lang="en">En</button>
             <button type="button" data-lang="ja">日</button>
+            <button type="button" data-lang="pt">Pt</button>
         </div>
 
         <!-- 后面 JS 会在这里生成图表 -->
@@ -1197,6 +1214,7 @@ SUPABASE 数据库表结构说明
                 <select id="study-add-lang">
                     <option value="en">English</option>
                     <option value="ja">日本語</option>
+                    <option value="pt">Português</option>
                 </select>
 
                 <div class="study-add-field">
@@ -1613,12 +1631,82 @@ let currentUser = null;
             copied: "✅ コピーしました",
             // 语言标签
             langLabel: "言語:"
+        },
+        pt: {
+            navLearn: "Estudar",
+            navSentences: "Frases",
+            navImport: "Importar",
+            navLib: "Vocabulário",
+            statNew: "Novas",
+            statRev: "Revisão",
+            statRel: "Reaprender",
+            btnNext: "Próximo (Enter)",
+            btnRetry: "Tentar novamente (Ctrl+Z)",
+            btnEdit: "Editar (Tab)",
+            btnAdd: "Adicionar",
+            btnSavePrompt: "Salvar prompt",
+            btnCopy: "Copiar pedido completo e limpar entrada",
+            btnImport: "Analisar e importar",
+            btnSaveApi: "Salvar config da API",
+            btnAiImport: "🚀 IA analisar e importar",
+            btnExport: "Backup JSON",
+            btnRestore: "Restaurar",
+            btnClear: "Limpar tudo",
+            btnCancel: "Cancelar",
+            btnConfirm: "Confirmar importação",
+            hintEdit: "Editar",
+            hintNext: "Próximo",
+            hintRetry: "Tentar novamente",
+            hintDelete: "Excluir",
+            resourceTitle: "🔗 Recursos de aprendizagem",
+            promptTitle: "🔥 Prompt de IA",
+            importTitle: "📥 Importar novas palavras",
+            aiApiTitle: "🤖 Configurações da API de IA",
+            settingsTitle: "⚙️ Metas e backup",
+            libTitle: "🗃️ Vocabulário",
+            thWord: "Palavra/Fonética",
+            thOrig: "Frase original",
+            thOrigTrans: "Tradução da original",
+            thGen: "Frase gerada",
+            thGenTrans: "Tradução da gerada",
+            thAction: "Ação",
+            labelNew: "Novas:",
+            labelRev: "Revisão:",
+            labelRel: "Reaprender:",
+            confirmTitle: "Confirmar importação",
+            confirmJa: "Palavras japonesas:",
+            confirmEn: "Palavras inglesas:",
+            confirmPt: "Palavras portuguesas:",
+            confirmTotal: "Total:",
+            confirmHint: "Tem certeza de que deseja importar estas palavras para os vocabulários correspondentes?",
+            phasePreview: "PRÉVIA",
+            phaseRecallUsage: "LEMBRAR USO",
+            phaseVerify: "VERIFICAR",
+            phaseRecallContext: "LEMBRAR CONTEXTO",
+            completed: "🎉 Tarefa de hoje concluída!",
+            sentenceReveal: "Mostrar tradução",
+            sentenceNext: "Próxima frase (Enter)",
+            sentenceEmpty: "Ainda não há frases disponíveis.",
+            sentenceDone5: "Você leu mais 5 frases 🎉",
+            sentenceMore5: "Ler mais 5",
+            sentenceBrowse: "Continuar navegando",
+            sentenceViewed: "Frases vistas",
+            context: "Contexto:",
+            usage: "Uso:",
+            placeholderGen: "Digite a frase gerada...",
+            placeholderOrig: "Digite a frase original...",
+            noInput: "Sem entrada",
+            deleteConfirm: "Excluir esta palavra permanentemente?",
+            clearConfirm: "⚠️ Limpar todos os dados?",
+            saved: "Salvo",
+            copied: "✅ Copiado",
+            langLabel: "Idioma:"
         }
     };
 
     // 翻译函数
     function t(key) {
-        return i18n[currentLang][key] || key;
+        return (i18n[currentLang] && i18n[currentLang][key]) || i18n.en[key] || key;
     }
 
     // 切换语言
@@ -1655,6 +1743,7 @@ let currentUser = null;
         // 更新语言按钮状态
         document.getElementById('btn-en').classList.toggle('active', currentLang === 'en');
         document.getElementById('btn-ja').classList.toggle('active', currentLang === 'ja');
+        document.getElementById('btn-pt').classList.toggle('active', currentLang === 'pt');
         
         // 更新导航
         document.querySelector('.nav-text-learn').textContent = t('navLearn');
@@ -1695,7 +1784,7 @@ let currentUser = null;
         document.querySelector('.ai-api-title').textContent = t('aiApiTitle');
         document.querySelector('.lib-title').innerHTML = t('libTitle')
             + ' <button class="btn-action btn-danger btn-text-clear" onclick="clearAllData()" style="float:right; font-size:12px;">' + t('btnClear') + '</button>'
-            + ' <button class="btn-action" onclick="removeDuplicates()" style="float:right; font-size:12px; margin-right:8px;">' + (currentLang === 'ja' ? '重複削除' : 'Delete duplicates') + '</button>';
+            + ' <button class="btn-action" onclick="removeDuplicates()" style="float:right; font-size:12px; margin-right:8px;">' + (currentLang === 'ja' ? '重複削除' : currentLang === 'pt' ? 'Remover duplicadas' : 'Delete duplicates') + '</button>';
         
         // 更新表头
         document.querySelector('.th-word').textContent = t('thWord');
@@ -1714,6 +1803,8 @@ let currentUser = null;
         document.querySelector('.confirm-title').textContent = t('confirmTitle');
         document.querySelector('.confirm-ja-label').textContent = t('confirmJa');
         document.querySelector('.confirm-en-label').textContent = t('confirmEn');
+        const confirmPtLabel = document.querySelector('.confirm-pt-label');
+        if (confirmPtLabel) confirmPtLabel.textContent = t('confirmPt');
         document.querySelector('.confirm-total-label').textContent = t('confirmTotal');
         document.querySelector('.confirm-hint').textContent = t('confirmHint');
         document.querySelector('.btn-text-cancel').textContent = t('btnCancel');
@@ -1731,16 +1822,34 @@ let currentUser = null;
 
     // 判断单词语言类型
     function detectWordLanguage(word) {
-        // 检测日文（平假名、片假名、汉字）
+        // 只可靠识别日文；拉丁字母语言（英语/葡语）由当前模块决定。
         if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(word)) {
             return 'ja';
         }
         return 'en';
     }
 
+    function getImportTargetLang(word) {
+        if (currentLang === 'pt') return 'pt';
+        return detectWordLanguage(word);
+    }
+
+    function getLanguageBadge(lang) {
+        if (lang === 'ja') return '日';
+        if (lang === 'pt') return 'Pt';
+        return 'En';
+    }
+
+    function getLocaleForCurrentLang() {
+        if (currentLang === 'ja') return 'ja-JP';
+        if (currentLang === 'pt') return 'pt-PT';
+        return 'en-US';
+    }
+
     // 获取当前语言对应的表名
     function getTableName(lang) {
-        return lang === 'ja' ? 'vocab_gois' : 'vocab_words';
+        const tableMap = { en: 'vocab_words', ja: 'vocab_gois', pt: 'vocab_portuguese' };
+        return tableMap[lang] || tableMap.en;
     }
 
     // 数据访问已迁移到 Supabase Auth + Supabase Database。
@@ -1774,7 +1883,16 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
 原文：研究者はすべての遺物を記録する際に綿密であった。
 例文：彼は身だしなみに綿密である。
 原文訳：研究人员在记录每一件文物时都非常细心。
-例文訳：他对自己个人的仪表非常讲究。`
+例文訳：他对自己个人的仪表非常讲究。`,
+        pt: `Meu nível de português: 【A2/B1】
+Extraia palavras ou expressões difíceis do texto que eu fornecer (se houver mais de 8, selecione as 8 mais importantes).
+
+Organize exatamente no formato do exemplo:
+① meticuloso [me.ti.ku.ˈlo.zu] adj.
+Original: O pesquisador foi meticuloso ao documentar cada artefato.
+Example: Ele é meticuloso com a aparência pessoal.
+Original Trans: 研究人员在记录每一件文物时都非常细心。
+Example Trans: 他对自己个人的仪表非常讲究。`
     };
 
     let words = [];
@@ -1848,10 +1966,9 @@ Example Trans: 他对自己个人的仪表非常讲究。`,
     }
 
     // --- 同步单词到云端 ---
-async function syncWordToCloud(wordObj) {
+async function syncWordToCloud(wordObj, lang = currentLang) {
     try {
-        const lang = detectWordLanguage(wordObj.word);
-        const table = lang === 'ja' ? 'vocab_gois' : 'vocab_words';
+        const table = getTableName(lang);
         const row = {
             id: wordObj.id,
             user_id: currentUser.id,
@@ -2229,10 +2346,7 @@ function openStudyAnalytics() {
     const title = document.getElementById('analytics-title');
 
     if (title) {
-        title.textContent =
-            currentLang === 'ja'
-                ? '学習分析'
-                : 'Study Analytics';
+        title.textContent = currentLang === 'ja' ? '学習分析' : currentLang === 'pt' ? 'Análise de estudo' : 'Study Analytics';
 
         title.classList.remove('hidden');
     }
@@ -2720,9 +2834,7 @@ function renderStudyAnalytics() {
     if (countEl) {
 
         countEl.textContent =
-            currentLang === 'ja'
-                ? `${studyHistory.length} 回`
-                : `${studyHistory.length} sessions`;
+            currentLang === 'ja' ? `${studyHistory.length} 回` : currentLang === 'pt' ? `${studyHistory.length} sessões` : `${studyHistory.length} sessions`;
     }
 
 
@@ -2740,14 +2852,14 @@ function renderStudyAnalytics() {
             todayNote.textContent =
                 currentLang === 'ja'
                     ? '今日はまだ学習していません'
-                    : 'No study time today';
+                    : currentLang === 'pt' ? 'Ainda sem tempo de estudo hoje' : 'No study time today';
 
         } else {
 
             todayNote.textContent =
                 currentLang === 'ja'
                     ? `今日 ${formatAnalyticsTime(todaySeconds)} 学習`
-                    : `${formatAnalyticsTime(todaySeconds)} studied today`;
+                    : currentLang === 'pt' ? `${formatAnalyticsTime(todaySeconds)} estudados hoje` : `${formatAnalyticsTime(todaySeconds)} studied today`;
         }
     }
 
@@ -2764,7 +2876,7 @@ function renderStudyAnalytics() {
         averageNote.textContent =
             currentLang === 'ja'
                 ? `7日間平均：${formatAnalyticsTime(sevenAvg)} / 日`
-                : `7-day average: ${formatAnalyticsTime(sevenAvg)}/day`;
+                : currentLang === 'pt' ? `Média de 7 dias: ${formatAnalyticsTime(sevenAvg)}/dia` : `7-day average: ${formatAnalyticsTime(sevenAvg)}/day`;
     }
 
 
@@ -2797,125 +2909,38 @@ function renderStudyAnalytics() {
 }
 function updateStudyAnalyticsLanguage() {
 
-    const ja = currentLang === 'ja';
-
-    const setText = (id, text) => {
-
-        const el =
-            document.getElementById(id);
-
-        if (el) {
-            el.textContent = text;
-        }
+    const labels = {
+        en: { today: 'TODAY', seven: '7 DAYS', thirty: '30 DAYS', total: 'TOTAL', trend: 'Study Trend', range7: '7D', monthly: 'Monthly', quarterly: 'Quarterly', history: 'Study History', add: 'Add', all: 'All', title: 'Study Analytics', addTitle: 'Add Study Record', language: 'Language', duration: 'Duration', endTime: 'End time', save: 'Save' },
+        ja: { today: '今日', seven: '7日間', thirty: '30日間', total: '合計', trend: '学習推移', range7: '7日', monthly: '月別', quarterly: '四半期', history: '学習履歴', add: '追加', all: 'すべて', title: '学習分析', addTitle: '学習記録を追加', language: '言語', duration: '持続時間', endTime: '終了時間', save: '保存' },
+        pt: { today: 'HOJE', seven: '7 DIAS', thirty: '30 DIAS', total: 'TOTAL', trend: 'Tendência de estudo', range7: '7D', monthly: 'Mensal', quarterly: 'Trimestral', history: 'Histórico de estudo', add: 'Adicionar', all: 'Todos', title: 'Análise de estudo', addTitle: 'Adicionar registro de estudo', language: 'Idioma', duration: 'Duração', endTime: 'Hora final', save: 'Salvar' }
     };
 
+    const langLabels = labels[currentLang] || labels.en;
+    const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
 
-    setText(
-        'analytics-today-label',
-        ja ? '今日' : 'TODAY'
-    );
+    setText('analytics-today-label', langLabels.today);
+    setText('analytics-7-label', langLabels.seven);
+    setText('analytics-30-label', langLabels.thirty);
+    setText('analytics-total-label', langLabels.total);
+    setText('analytics-trend-title', langLabels.trend);
+    setText('analytics-history-title', langLabels.history);
+    setText('analytics-add-label', langLabels.add);
+    setText('analytics-title', langLabels.title);
+    setText('study-add-title', langLabels.addTitle);
+    setText('study-add-lang-label', langLabels.language);
+    setText('study-add-duration-label', langLabels.duration);
+    setText('study-add-end-label', langLabels.endTime);
+    setText('study-add-save-label', langLabels.save);
 
-    setText(
-        'analytics-7-label',
-        ja ? '7日間' : '7 DAYS'
-    );
+    const range7 = document.querySelector('#study-range-tabs [data-range="7d"]');
+    const rangeMonthly = document.querySelector('#study-range-tabs [data-range="monthly"]');
+    const rangeQuarterly = document.querySelector('#study-range-tabs [data-range="quarterly"]');
+    const allButton = document.querySelector('#study-lang-tabs [data-lang="all"]');
 
-    setText(
-        'analytics-30-label',
-        ja ? '30日間' : '30 DAYS'
-    );
-
-    setText(
-        'analytics-total-label',
-        ja ? '合計' : 'TOTAL'
-    );
-
-    setText(
-        'analytics-trend-title',
-        ja ? '学習推移' : 'Study Trend'
-    );
-
-    const range7 =
-        document.querySelector(
-            '#study-range-tabs [data-range="7d"]'
-        );
-
-    const rangeMonthly =
-        document.querySelector(
-            '#study-range-tabs [data-range="monthly"]'
-        );
-
-    const rangeQuarterly =
-        document.querySelector(
-            '#study-range-tabs [data-range="quarterly"]'
-        );
-
-
-    if (range7) {
-        range7.textContent =
-            ja ? '7日' : '7D';
-    }
-
-    if (rangeMonthly) {
-        rangeMonthly.textContent =
-            ja ? '月別' : 'Monthly';
-    }
-
-    if (rangeQuarterly) {
-        rangeQuarterly.textContent =
-            ja ? '四半期' : 'Quarterly';
-    }
-
-    setText(
-        'analytics-history-title',
-        ja ? '学習履歴' : 'Study History'
-    );
-
-    setText(
-        'analytics-add-label',
-        ja ? '追加' : 'Add'
-    );
-
-
-    // 数据语言筛选
-    const allButton =
-        document.querySelector(
-            '#study-lang-tabs [data-lang="all"]'
-        );
-
-    if (allButton) {
-        allButton.textContent =
-            ja ? 'すべて' : 'All';
-    }
-
-
-    // Add 弹窗
-    setText(
-        'study-add-title',
-        ja
-            ? '学習記録を追加'
-            : 'Add Study Record'
-    );
-
-    setText(
-        'study-add-lang-label',
-        ja ? '言語' : 'Language'
-    );
-
-    setText(
-        'study-add-duration-label',
-        ja ? '持続時間' : 'Duration'
-    );
-
-    setText(
-        'study-add-end-label',
-        ja ? '終了時間' : 'End time'
-    );
-
-    setText(
-        'study-add-save-label',
-        ja ? '保存' : 'Save'
-    );
+    if (range7) range7.textContent = langLabels.range7;
+    if (rangeMonthly) rangeMonthly.textContent = langLabels.monthly;
+    if (rangeQuarterly) rangeQuarterly.textContent = langLabels.quarterly;
+    if (allButton) allButton.textContent = langLabels.all;
 }
     // ============================================================
 // Study History
@@ -3908,9 +3933,7 @@ function showStudyChartDetail(day) {
 
 
     const locale =
-        currentLang === 'ja'
-            ? 'ja-JP'
-            : 'en-US';
+        getLocaleForCurrentLang();
 
     const dateText =
         day.date.toLocaleDateString(
@@ -4145,9 +4168,7 @@ function renderStudyHistory() {
             lang.className = 'study-session-lang';
 
             lang.textContent =
-                session.lang === 'ja'
-                    ? '日'
-                    : 'En';
+                getLanguageBadge(session.lang);
 
 
             // 开始时间 - 结束时间
@@ -4407,7 +4428,7 @@ async function saveManualStudySession() {
     // --- 加载单词 ---
     async function loadWords() {
     try {
-        const table = currentLang === 'ja' ? 'vocab_gois' : 'vocab_words';
+        const table = getTableName(currentLang);
         const { data, error } = await sb
             .from(table)
             .select('*')
@@ -4556,10 +4577,10 @@ async function saveManualStudySession() {
             let w = { id: crypto.randomUUID(), status: 'new', deleted: false, count: 0, nextTime: Date.now() };
             lines.forEach(l => {
                 if (l.match(/^[①-⑳㉑-㉟㊱-㊵]/)) { let m = l.match(/^[①-⑳㉑-㉟㊱-㊵]\s*(.+)$/); if (m) w.word = m[1].trim(); }
-                if (l.startsWith('原句：') || l.startsWith('原文：')) w.origJP = l.replace(/原[句文]：/, '').trim();
-                if (l.startsWith('例句：')) w.genJP = l.replace('例句：', '').trim();
-                if (l.startsWith('原句翻译：') || l.startsWith('原文訳：')) w.origCN = l.replace(/原[句文]翻[译訳]：/, '').trim();
-                if (l.startsWith('例句翻译：') || l.startsWith('例文訳：')) w.genCN = l.replace(/例[句文]翻[译訳]：/, '').trim();
+                if (l.startsWith('原句：') || l.startsWith('原文：') || l.startsWith('Original:')) w.origJP = l.replace(/^(原[句文]：|Original:)/, '').trim();
+                if (l.startsWith('例句：') || l.startsWith('Example:')) w.genJP = l.replace(/^(例句：|Example:)/, '').trim();
+                if (l.startsWith('原句翻译：') || l.startsWith('原文訳：') || l.startsWith('Original Trans:')) w.origCN = l.replace(/^(原[句文]翻[译訳]：|原文訳：|Original Trans:)/, '').trim();
+                if (l.startsWith('例句翻译：') || l.startsWith('例文訳：') || l.startsWith('Example Trans:')) w.genCN = l.replace(/^(例[句文]翻[译訳]：|例文訳：|Example Trans:)/, '').trim();
             });
             if (w.word) pendingImportWords.push(w);
         }
@@ -4570,16 +4591,20 @@ async function saveManualStudySession() {
         }
         
         // 统计语言分布
-        let jaCount = 0, enCount = 0;
+        let jaCount = 0, enCount = 0, ptCount = 0;
         pendingImportWords.forEach(w => {
-            if (detectWordLanguage(w.word) === 'ja') jaCount++;
+            const targetLang = getImportTargetLang(w.word);
+            if (targetLang === 'ja') jaCount++;
+            else if (targetLang === 'pt') ptCount++;
             else enCount++;
         });
         
         // 更新确认对话框
         document.getElementById('confirm-ja-count').textContent = jaCount + (currentLang === 'ja' ? ' 個' : ' words');
         document.getElementById('confirm-en-count').textContent = enCount + (currentLang === 'ja' ? ' 個' : ' words');
-        document.getElementById('confirm-total-count').textContent = pendingImportWords.length + (currentLang === 'ja' ? ' 個' : ' words');
+        const ptCountEl = document.getElementById('confirm-pt-count');
+        if (ptCountEl) ptCountEl.textContent = ptCount + (currentLang === 'pt' ? ' palavras' : currentLang === 'ja' ? ' 個' : ' words');
+        document.getElementById('confirm-total-count').textContent = pendingImportWords.length + (currentLang === 'pt' ? ' palavras' : currentLang === 'ja' ? ' 個' : ' words');
         
         // 显示对话框
         document.getElementById('import-confirm-modal').classList.add('show');
@@ -4606,7 +4631,7 @@ async function saveManualStudySession() {
 
         for (let w of pendingImportWords) {
             const key = normalizeWordKey(w.word);
-            const wordLang = detectWordLanguage(w.word);
+            const wordLang = getImportTargetLang(w.word);
 
             if (!key || existingKeys.has(key) || batchKeys.has(key)) {
                 skippedDuplicates++;
@@ -4614,7 +4639,7 @@ async function saveManualStudySession() {
             }
 
             batchKeys.add(key);
-            await syncWordToCloud(w);
+            await syncWordToCloud(w, wordLang);
 
             // words 只代表当前语言的本地词库，避免混合语言导入后暂时串库
             if (wordLang === currentLang) {
@@ -4865,6 +4890,38 @@ async function saveManualStudySession() {
         return voice;
     }
 
+
+
+    function getPreferredPortugueseVoice() {
+        const voices = speechSynthesis.getVoices();
+        const portugueseVoices = voices.filter(v => (v.lang || '').toLowerCase().startsWith('pt'));
+        if (portugueseVoices.length === 0) return null;
+
+        return portugueseVoices.find(v => (v.lang || '').toLowerCase() === 'pt-pt')
+            || portugueseVoices.find(v => (v.lang || '').toLowerCase() === 'pt-br')
+            || portugueseVoices[0];
+    }
+
+    function configureUtteranceVoice(utterance) {
+        if (currentLang === 'ja') {
+            utterance.lang = 'ja-JP';
+            const voice = getPreferredJapaneseVoice();
+            if (voice) utterance.voice = voice;
+            return;
+        }
+
+        if (currentLang === 'pt') {
+            const voice = getPreferredPortugueseVoice();
+            utterance.lang = voice?.lang || 'pt-PT';
+            if (voice) utterance.voice = voice;
+            return;
+        }
+
+        const enVoice = getPreferredEnglishVoice();
+        utterance.lang = enVoice?.lang || 'en-US';
+        if (enVoice) utterance.voice = enVoice;
+    }
+
     function cleanTextForSpeech(text) {
         if (!text) return '';
 
@@ -4886,15 +4943,7 @@ async function saveManualStudySession() {
         const utterance = new SpeechSynthesisUtterance(cleanTextForSpeech(text));
         utterance.rate = sentenceSpeechRate;
 
-        if (currentLang === 'ja') {
-            utterance.lang = 'ja-JP';
-            const voice = getPreferredJapaneseVoice();
-            if (voice) utterance.voice = voice;
-        } else {
-            const enVoice = getPreferredEnglishVoice();
-            utterance.lang = enVoice?.lang || 'en-US';
-            if (enVoice) utterance.voice = enVoice;
-        }
+        configureUtteranceVoice(utterance);
 
         speechSynthesis.speak(utterance);
     }
@@ -4944,15 +4993,7 @@ async function saveManualStudySession() {
             const utterance = new SpeechSynthesisUtterance(cleanTextForSpeech(validTexts[index++]));
             utterance.rate = sentenceSpeechRate;
 
-            if (currentLang === 'ja') {
-                utterance.lang = 'ja-JP';
-                const voice = getPreferredJapaneseVoice();
-                if (voice) utterance.voice = voice;
-            } else {
-                utterance.lang = 'en-US';
-                const enVoice = speechSynthesis.getVoices().find(v => (v.lang || '').toLowerCase().startsWith('en'));
-                if (enVoice) utterance.voice = enVoice;
-            }
+            configureUtteranceVoice(utterance);
 
             utterance.onend = speakNext;
             speechSynthesis.speak(utterance);
@@ -5004,15 +5045,7 @@ async function saveManualStudySession() {
         const utterance = new SpeechSynthesisUtterance(cleanTextForSpeech(item.text));
         utterance.rate = sentenceSpeechRate;
 
-        if (currentLang === 'ja') {
-            utterance.lang = 'ja-JP';
-            const voice = getPreferredJapaneseVoice();
-            if (voice) utterance.voice = voice;
-        } else {
-            const enVoice = getPreferredEnglishVoice();
-            utterance.lang = enVoice?.lang || 'en-US';
-            if (enVoice) utterance.voice = enVoice;
-        }
+        configureUtteranceVoice(utterance);
 
         speechSynthesis.speak(utterance);
     }
@@ -5062,8 +5095,8 @@ async function saveManualStudySession() {
             ${item.word ? `<div class="sentence-word">${item.word}</div>` : ''}
             ${transHtml}
             <div class="sentence-actions">
-                <button class="btn-action btn-secondary" onclick="speakCurrentSentence()">🔊 ${currentLang === 'ja' ? 'もう一度聞く' : 'Replay'}</button>
-                <button class="btn-action btn-secondary" onclick="toggleSentenceAutoSpeak()">${sentenceAutoSpeak ? '🔈 ' + (currentLang === 'ja' ? '自動朗読 ON' : 'Auto read ON') : '🔇 ' + (currentLang === 'ja' ? '自動朗読 OFF' : 'Auto read OFF')}</button>
+                <button class="btn-action btn-secondary" onclick="speakCurrentSentence()">🔊 ${currentLang === 'ja' ? 'もう一度聞く' : currentLang === 'pt' ? 'Ouvir de novo' : 'Replay'}</button>
+                <button class="btn-action btn-secondary" onclick="toggleSentenceAutoSpeak()">${sentenceAutoSpeak ? '🔈 ' + (currentLang === 'ja' ? '自動朗読 ON' : currentLang === 'pt' ? 'Leitura auto ON' : 'Auto read ON') : '🔇 ' + (currentLang === 'ja' ? '自動朗読 OFF' : currentLang === 'pt' ? 'Leitura auto OFF' : 'Auto read OFF')}</button>
                 <button class="btn-action btn-secondary" onclick="toggleSentenceTranslation()">${t('sentenceReveal')} (Space)</button>
                 <button class="btn-action btn-primary" onclick="nextSentence()">${t('sentenceNext')}</button>
             </div>`;
@@ -5187,14 +5220,14 @@ async function saveManualStudySession() {
         const blob = new Blob([JSON.stringify({words, settings}, null, 2)], { type: 'application/json' });
         const a = document.createElement('a'); 
         a.href = URL.createObjectURL(blob);
-        a.download = `${currentLang === 'ja' ? 'Ja' : 'En'}_Library_${new Date().toLocaleDateString()}.json`; 
+        a.download = `${currentLang === 'ja' ? 'Ja' : currentLang === 'pt' ? 'Pt' : 'En'}_Library_${new Date().toLocaleDateString()}.json`; 
         a.click();
     }
     
     // 将当前语言词库在 Supabase 中的有效记录统一标记为 deleted=true。
     // 使用“软删除”而不是物理 DELETE，保持现有数据结构与单词删除逻辑一致。
     async function clearCurrentLanguageCloudWords() {
-    const table = currentLang === 'ja' ? 'vocab_gois' : 'vocab_words';
+    const table = getTableName(currentLang);
     const { data, error } = await sb
         .from(table)
         .update({ deleted: true })
