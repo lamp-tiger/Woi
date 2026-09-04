@@ -2308,20 +2308,15 @@ function getImportCountUnit() {
     }
 
     function buildDeepSeekReasoning(value) {
-        switch (value) {
-            case 'off': return { effort: 'none' };
-            case 'low': return { effort: 'low' };
-            case 'high': return { effort: 'high' };
-            case 'max': return { effort: 'max' };
-            default: return { effort: 'none' };
-        }
+        return value || 'off';
     }
 
     function buildDeepSeekBody(prompt) {
+        const reasoningValue = buildDeepSeekReasoning(apiConfig.reasoning || 'off');
         return {
             model: apiConfig.model,
             input: prompt,
-            reasoning: buildDeepSeekReasoning(apiConfig.reasoning || 'off'),
+            reasoning: reasoningValue,
             max_output_tokens: 6000,
             stream: false
         };
