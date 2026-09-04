@@ -4703,8 +4703,8 @@ async function saveManualStudySession() {
         if (session.currentIndex >= session.queue.length) {
             container.innerHTML = `<div style="text-align:center">
                 <h2>${t('completed')}</h2>
-                <p style="color:#888; margin:12px 0 18px;">${currentLang === 'ja' ? 'もう少しだけ、文を読んでみませんか？' : 'Want to read just a few more sentences?'}</p>
-                <button class="btn-action btn-primary" onclick="startSentenceMode(5)">${currentLang === 'ja' ? '再随便看 5 句 →' : 'Read 5 more →'}</button>
+                <p style="color:#888; margin:12px 0 18px;">${getLanguageText({ en: 'Want to read just a few more sentences?', ja: 'もう少しだけ、文を読んでみませんか？', pt: 'Quer ler mais algumas frases?', ko: '문장을 조금 더 읽어 볼까요?', es: '¿Quieres leer algunas frases más?' })}</p>
+                <button class="btn-action btn-primary" onclick="startSentenceMode(5)">${getLanguageText({ en: 'Read 5 more →', ja: 'さらに5文読む →', pt: 'Ler mais 5 →', ko: '5개 더 읽기 →', es: 'Leer 5 más →' })}</button>
             </div>`;
             return;
         }
