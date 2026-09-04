@@ -69,7 +69,9 @@
     }
 
     .word-title {
-        font-size: 28px;
+        font-size: 24px;
+        line-height: 1.45;
+        margin: 10px 0;
     }
 
     .nav {
@@ -1352,7 +1354,13 @@ SUPABASE 数据库表结构说明
         <div class="card" id="quiz-card"></div>
         
         <div class="mobile-actions">
-            <button class="btn-main-action" onclick="handleNext()"><span class="btn-text-next">确定 / 下一步 (Enter)</span></button>
+            <button class="btn-main-action"
+        onpointerdown="startMobileNextPress(event)"
+        onpointerup="endMobileNextPress(event)"
+        onpointercancel="cancelMobileNextPress()"
+        onpointerleave="cancelMobileNextPress()">
+    <span class="btn-text-next">确定 / 下一步 (Enter)</span>
+</button>
             <div class="btn-sub-group">
                 <button class="btn-sub-action" style="background:var(--woi-static)" onclick="handleRetry()"><span class="btn-text-retry">重来 (Ctrl+Z)</span></button>
                 <button class="btn-sub-action" style="background:var(--woi-static)" onclick="handleEdit()"><span class="btn-text-edit">修改 (Tab)</span></button>
@@ -2595,6 +2603,48 @@ Example Trans: 我想和你谈谈这个问题。`
     }
 
     // --- 核心逻辑封装 (供键盘和按钮共用) ---
+    let mobileNextPressTimer = null;
+    let mobileNextLongPressed = false;
+
+    function startMobileNextPress(e) {
+        if (window.innerWidth > 768) return;
+
+        mobileNextLongPressed = false;
+
+        clearTimeout(mobileNextPressTimer);
+
+        mobileNextPressTimer = setTimeout(async () => {
+            mobileNextLongPressed = true;
+
+            if (navigator.vibrate) {
+                navigator.vibrate(40);
+            }
+
+            await handleMobileDelete();
+        }, 700);
+    }
+
+    function endMobileNextPress(e) {
+        if (window.innerWidth > 768) return;
+
+        clearTimeout(mobileNextPressTimer);
+        mobileNextPressTimer = null;
+
+        // 已经触发长按删除，不再执行 Next
+        if (mobileNextLongPressed) {
+            mobileNextLongPressed = false;
+            return;
+        }
+
+        // 普通点击
+        handleNext();
+    }
+
+    function cancelMobileNextPress() {
+        clearTimeout(mobileNextPressTimer);
+        mobileNextPressTimer = null;
+    }
+
     async function handleNext() {
         await commitPendingDeleteBeforeAction();
 
@@ -5228,45 +5278,6 @@ async function saveManualStudySession() {
         return html;
     }
 
-    function setupMobileDeleteGesture(container, isMobile) {
-        if (!container) return;
-
-        if (!isMobile) {
-            container.onpointerdown = null;
-            container.onpointerup = null;
-            container.onpointercancel = null;
-            container.onpointerleave = null;
-            container.onclick = null;
-            return;
-        }
-
-        let longPressTimer = null;
-        let longPressed = false;
-
-        function clearLongPressTimer() {
-            if (longPressTimer) clearTimeout(longPressTimer);
-            longPressTimer = null;
-        }
-
-        container.onpointerdown = () => {
-            longPressed = false;
-            clearLongPressTimer();
-            longPressTimer = setTimeout(() => {
-                longPressed = true;
-                handleMobileDelete();
-            }, 650);
-        };
-
-        container.onpointerup = clearLongPressTimer;
-        container.onpointercancel = clearLongPressTimer;
-        container.onpointerleave = clearLongPressTimer;
-        container.onclick = (e) => {
-            if (!longPressed) return;
-            e.preventDefault();
-            e.stopPropagation();
-        };
-    }
-
     function renderQuiz() {
         const container = document.getElementById('quiz-card');
         if (session.currentIndex >= session.queue.length) {
@@ -5322,7 +5333,6 @@ async function saveManualStudySession() {
             <button class="btn-action btn-primary" style="width:100%" onclick="saveQuickEdit()">${t('saved')}</button>
         </div>`;
         container.innerHTML = html;
-        setupMobileDeleteGesture(container, isMobile);
         if(!isMobile && document.getElementById('q-input')) document.getElementById('q-input').focus();
         autoSpeakLearningPhase();
     }
