@@ -1460,9 +1460,9 @@ SUPABASE 数据库表结构说明
     </button>
 
     <button class="btn-action"
-            onclick="removeDuplicates()"
+            onclick="removeAbnormalWords()"
             style="float:right; font-size:12px; margin-right:8px;">
-        删除重复
+        删除异常
     </button>
 </h3>
             <div class="table-container">
@@ -2008,7 +2008,15 @@ function getImportCountUnit() {
         document.querySelector('.ai-api-title').textContent = t('aiApiTitle');
         document.querySelector('.lib-title').innerHTML = t('libTitle')
             + ' <button class="btn-action btn-danger btn-text-clear" onclick="clearAllData()" style="float:right; font-size:12px;">' + t('btnClear') + '</button>'
-            + ' <button class="btn-action" onclick="removeDuplicates()" style="float:right; font-size:12px; margin-right:8px;">' + (currentLang === 'ja' ? '重複削除' : currentLang === 'pt' ? 'Remover duplicadas' : 'Delete duplicates') + '</button>';
+            + ' <button class="btn-action" onclick="removeAbnormalWords()" style="float:right; font-size:12px; margin-right:8px;">'
+            + (
+                currentLang === 'ja' ? '異常データ削除' :
+                currentLang === 'pt' ? 'Remover dados anormais' :
+                currentLang === 'ko' ? '비정상 데이터 삭제' :
+                currentLang === 'es' ? 'Eliminar datos anómalos' :
+                'Delete abnormal data'
+              )
+            + '</button>';
         
         // 更新表头
         document.querySelector('.th-word').textContent = t('thWord');
@@ -5381,50 +5389,70 @@ async function saveManualStudySession() {
         return (statusRank[w.status] || 0) * 1000 + (w.count || 0) * 10 + filledFields;
     }
 
-    async function removeDuplicates() {
-        const groups = new Map();
+    async function removeAbnormalWords() {
+    const abnormal = new Set();
 
-        for (const w of words) {
-            if (w.deleted) continue;
-            const key = normalizeWordKey(w.word);
-            if (!key) continue;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key).push(w);
-        }
+    // 1. 任意核心字段为 null / undefined
+    for (const w of words) {
+        if (w.deleted) continue;
 
-        const duplicates = [];
-        for (const group of groups.values()) {
-            if (group.length <= 1) continue;
+        const hasNull =
+            w.word == null ||
+            w.origJP == null ||
+            w.origCN == null ||
+            w.genJP == null ||
+            w.genCN == null;
 
-            // 优先保留学习进度更高、资料更完整的那条，减少误删有效记录
-            group.sort((a, b) => duplicateKeepScore(b) - duplicateKeepScore(a));
-            duplicates.push(...group.slice(1));
-        }
-
-        if (duplicates.length === 0) {
-            alert(currentLang === 'ja' ? '重複単語はありません' : '没有发现重复单词');
-            return;
-        }
-
-        const msg = currentLang === 'ja'
-            ? `${duplicates.length} 件の重複単語が見つかりました。削除しますか？`
-            : `发现 ${duplicates.length} 个重复单词，是否删除？`;
-        if (!confirm(msg)) return;
-
-        for (const w of duplicates) {
-            w.deleted = true;
-            await syncWordToCloud(w);
-        }
-
-        save();
-        renderLib();
-        prepareSession();
-        renderQuiz();
-
-        alert(currentLang === 'ja'
-            ? `${duplicates.length} 件の重複単語を削除しました`
-            : `已删除 ${duplicates.length} 个重复单词`);
+        if (hasNull) abnormal.add(w);
     }
+
+    // 2. 查找重复数据
+    const groups = new Map();
+
+    for (const w of words) {
+        if (w.deleted) continue;
+
+        const key = normalizeWordKey(w.word);
+        if (!key) continue;
+
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(w);
+    }
+
+    for (const group of groups.values()) {
+        if (group.length <= 1) continue;
+
+        // 优先保留学习进度更高、资料更完整的一条
+        group.sort((a, b) => duplicateKeepScore(b) - duplicateKeepScore(a));
+
+        for (const w of group.slice(1)) {
+            abnormal.add(w);
+        }
+    }
+
+    const targets = [...abnormal];
+
+    if (targets.length === 0) {
+        alert('没有发现异常数据');
+        return;
+    }
+
+    if (!confirm(`发现 ${targets.length} 条异常数据（重复或存在 null），是否删除？`)) {
+        return;
+    }
+
+    for (const w of targets) {
+        w.deleted = true;
+        await syncWordToCloud(w);
+    }
+
+    save();
+    renderLib();
+    prepareSession();
+    renderQuiz();
+
+    alert(`已删除 ${targets.length} 条异常数据`);
+}
     
     function renderLinks() {
         const list = document.getElementById('link-list');
