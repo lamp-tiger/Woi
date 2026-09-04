@@ -1439,9 +1439,9 @@ SUPABASE 数据库表结构说明
 
             <h3 style="margin-top:25px;" class="settings-title">⚙️ 目标与备份</h3>
             <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-bottom:10px;">
-                <div><span class="label-new">新词:</span> <input type="number" id="set-new" value="10" style="width:50px" onchange="settings.new=parseInt(this.value);save();"></div>
-                <div><span class="label-rev">复习:</span> <input type="number" id="set-rev" value="20" style="width:50px" onchange="settings.rev=parseInt(this.value);save();"></div>
-                <div><span class="label-rel">再复习:</span> <input type="number" id="set-rel" value="30" style="width:50px" onchange="settings.rel=parseInt(this.value);save();"></div>
+                <div><span class="label-new">新词:</span> <input type="number" id="set-new" value="10" style="width:50px" onchange="saveDailyTargets()"></div>
+                <div><span class="label-rev">复习:</span> <input type="number" id="set-rev" value="20" style="width:50px" onchange="saveDailyTargets()"></div>
+                <div><span class="label-rel">再复习:</span> <input type="number" id="set-rel" value="30" style="width:50px" onchange="saveDailyTargets()"></div>
             </div>
             <button class="btn-action btn-primary btn-text-export" onclick="exportData()">备份 JSON</button>
             <button class="btn-action btn-text-restore" onclick="document.getElementById('fileInput').click()">恢复备份</button>
@@ -1934,30 +1934,32 @@ function getImportCountUnit() {
     // 切换语言
     async function switchLang(lang) {
 
-    // 本来就是当前语言，不做任何事
     if (lang === currentLang) return;
 
-    // 如果当前正在计时，切换语言前先自动停止
     if (activeStudySession) {
         try {
             await stopStudyTimer();
         } catch (e) {
             console.error('切换语言时停止计时失败:', e);
-
-            // 停止失败就不要切语言，避免把学习时间记错
             alert(
                 currentLang === 'ja'
                     ? 'タイマーを停止できませんでした。もう一度お試しください。'
                     : 'Could not stop the timer. Please try again.'
             );
-
             return;
         }
     }
 
     currentLang = lang;
     localStorage.setItem('lang', lang);
-    location.reload();
+    clearCurrentUserState();
+    await loadDailyLogFromCloud();
+    await loadWords();
+    await loadResources();
+    await loadPrompt();
+    updateLanguageUI();
+    prepareSession();
+    renderQuiz();
 }
 
     // 更新界面语言
@@ -2551,8 +2553,38 @@ Example Trans: 我想和你谈谈这个问题。`
     let sentenceSpeechRate = 0.9;
 
     function loadLocalState() {
-        settings = JSON.parse(localStorage.getItem('en_v3_settings_' + currentLang) || '{"new":10,"rev":20,"rel":30}');
-        dailyLog = JSON.parse(localStorage.getItem('en_v3_log_' + currentLang) || `{"date":"${new Date().toLocaleDateString()}","new":0,"rev":0,"rel":0}`);
+        settings = { new: 10, rev: 20, rel: 30 };
+        dailyLog = createEmptyDailyLog();
+    }
+
+    function createEmptyDailyLog(date = new Date().toLocaleDateString()) {
+        return { date, new: 0, rev: 0, rel: 0 };
+    }
+
+    function getDailyCacheKey() {
+        if (!currentUser) return null;
+        return 'woi_daily_' + currentUser.id + '_' + currentLang;
+    }
+
+    function refreshDailyStatsUI() {
+        document.getElementById('set-new').value = settings.new;
+        document.getElementById('set-rev').value = settings.rev;
+        document.getElementById('set-rel').value = settings.rel;
+        updateStats();
+        if (typeof renderStudyAnalytics === 'function') renderStudyAnalytics();
+    }
+
+    function clearCurrentUserState() {
+        words = [];
+        settings = { new: 10, rev: 20, rel: 30 };
+        dailyLog = createEmptyDailyLog();
+        favLinks = [];
+        customPrompt = '';
+        session = { queue: [], currentIndex: 0, phase: 'PREVIEW', lastInput: '' };
+        sentenceSession = { items: [], index: 0, revealed: false, limit: null, viewed: 0 };
+        studyHistory = [];
+        if (typeof activeStudySession !== 'undefined') activeStudySession = null;
+        refreshDailyStatsUI();
     }
 
     // --- 核心逻辑封装 (供键盘和按钮共用) ---
@@ -2575,7 +2607,7 @@ Example Trans: 我想和你谈谈这个问题。`
         else if(p==='GEN_VERIFY') session.phase='ORIG_PROMPT';
         else if(p==='ORIG_PROMPT') session.phase='ORIG_VERIFY';
         else { 
-            finishWord(); 
+            await finishWord(); 
             session.currentIndex++; 
             session.phase='PREVIEW'; 
             session.lastInput = ''; 
@@ -5090,10 +5122,7 @@ async function saveManualStudySession() {
 }
 
     function save() {
-        localStorage.setItem('en_v3_settings_' + currentLang, JSON.stringify(settings));
-        localStorage.setItem('en_v3_log_' + currentLang, JSON.stringify(dailyLog));
         updateStats();
-        syncDailyLogToCloud();
     }
 
     function getDiffHtml(userInput, targetText) {
@@ -5823,6 +5852,7 @@ async function saveManualStudySession() {
     
     async function syncDailyLogToCloud() {
     try {
+        if (!currentUser) return;
         const { error } = await sb
             .from('daily_stats')
             .upsert({
@@ -5839,12 +5869,15 @@ async function saveManualStudySession() {
             }, { onConflict: 'user_id,lang,date_str' });
 
         if (error) throw error;
+        const cacheKey = getDailyCacheKey();
+        if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ settings, dailyLog }));
     } catch(e) { console.error('同步 daily_stats 失败:', e); }
 }
 
 
     async function loadDailyLogFromCloud() {
     try {
+        if (!currentUser) return;
         const today = new Date().toLocaleDateString();
         const { data: row, error } = await sb
             .from('daily_stats')
@@ -5856,9 +5889,10 @@ async function saveManualStudySession() {
 
         if (error) throw error;
 
+        dailyLog = createEmptyDailyLog(today);
         if (row) {
             dailyLog = {
-                date: row.date_str,
+                date: today,
                 new: row.actual_new || 0,
                 rev: row.actual_rev || 0,
                 rel: row.actual_rel || 0
@@ -5867,17 +5901,85 @@ async function saveManualStudySession() {
             if (row.target_rev != null) settings.rev = row.target_rev;
             if (row.target_rel != null) settings.rel = row.target_rel;
         }
+
+        const cacheKey = getDailyCacheKey();
+        if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify({ settings, dailyLog }));
+        refreshDailyStatsUI();
     } catch(e) { console.error('加载 daily_stats 失败:', e); }
 }
 
 
-    function finishWord() {
-        const w = session.queue[session.currentIndex]; 
+    async function saveDailyTargets() {
+    settings.new = parseInt(document.getElementById('set-new').value, 10) || 0;
+    settings.rev = parseInt(document.getElementById('set-rev').value, 10) || 0;
+    settings.rel = parseInt(document.getElementById('set-rel').value, 10) || 0;
+    dailyLog.date = new Date().toLocaleDateString();
+    refreshDailyStatsUI();
+    await syncDailyLogToCloud();
+    await loadDailyLogFromCloud();
+}
+
+
+    async function incrementDailyStat(stat) {
+    const today = new Date().toLocaleDateString();
+    const { data, error } = await sb.rpc('increment_daily_stat', {
+        p_lang: currentLang,
+        p_date_str: today,
+        p_stat: stat,
+        p_target_new: settings.new,
+        p_target_rev: settings.rev,
+        p_target_rel: settings.rel
+    });
+
+    if (error) throw error;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row) {
+        dailyLog = {
+            date: today,
+            new: row.actual_new || 0,
+            rev: row.actual_rev || 0,
+            rel: row.actual_rel || 0
+        };
+        if (row.target_new != null) settings.new = row.target_new;
+        if (row.target_rev != null) settings.rev = row.target_rev;
+        if (row.target_rel != null) settings.rel = row.target_rel;
+    } else {
+        await loadDailyLogFromCloud();
+    }
+    refreshDailyStatsUI();
+}
+
+
+    async function finishWord() {
+        const w = session.queue[session.currentIndex];
         const now = Date.now();
-        if (w.status === 'new') { w.status = 'review'; w.nextTime = now + 86400000; dailyLog.new++; }
-        else if (w.status === 'review') { w.status = 'relearn'; w.count = 1; w.nextTime = now + 86400000; dailyLog.rev++; }
-        else { w.count++; w.nextTime = now + (Math.pow(2, w.count)*86400000); dailyLog.rel++; if(w.count>=7) w.status='mastered'; }
-        save(); syncWordToCloud(w); syncDailyLogToCloud();
+        let stat = 'rel';
+
+        if (w.status === 'new') {
+            w.status = 'review';
+            w.nextTime = now + 86400000;
+            stat = 'new';
+        } else if (w.status === 'review') {
+            w.status = 'relearn';
+            w.count = 1;
+            w.nextTime = now + 86400000;
+            stat = 'rev';
+        } else {
+            w.count++;
+            w.nextTime = now + (Math.pow(2, w.count) * 86400000);
+            if (w.count >= 7) w.status = 'mastered';
+            stat = 'rel';
+        }
+
+        save();
+        await syncWordToCloud(w);
+        try {
+            await incrementDailyStat(stat);
+        } catch (e) {
+            console.error('同步 daily_stats 计数失败:', e);
+            await loadDailyLogFromCloud();
+        }
     }
 
     function saveQuickEdit() {
@@ -6226,39 +6328,25 @@ async function startWoi() {
             data: { session }
         } = await sb.auth.getSession();
 
-        if (!session || !session.user) {
-            currentUser = null;
+        clearCurrentUserState();
+        currentUser = session?.user || null;
+
+        if (!currentUser) {
             showLoginPage();
             return;
         }
-
-        currentUser = session.user;
-
     } catch (error) {
-        console.error(
-            'Authentication check failed:',
-            error
-        );
-
-        showLoginPage(
-            'Unable to verify login. Please refresh.'
-        );
-
+        console.error('Authentication check failed:', error);
+        showLoginPage('Unable to verify login. Please refresh.');
         return;
     }
 
     try {
+        await loadDailyLogFromCloud();
         await init();
     } catch (error) {
-        console.error(
-            'Woi initialization failed:',
-            error
-        );
-
-        alert(
-            'Woi initialization failed: ' +
-            error.message
-        );
+        console.error('Woi initialization failed:', error);
+        alert('Woi initialization failed: ' + error.message);
     }
 }
 
