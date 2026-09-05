@@ -145,9 +145,71 @@
         .sentence-progress { color:#999; font-size:13px; }
         .sentence-status { display:grid; grid-template-columns: 1fr auto auto; align-items:center; gap:8px; margin-bottom:18px; }
         .sentence-count { text-align:left; color:#999; font-size:13px; font-variant-numeric: tabular-nums; }
-        .sentence-auto-toggle { position:relative; overflow:hidden; background:var(--woi-static); color:white; border:none; border-radius:8px; padding:8px 12px; font-weight:bold; cursor:pointer; }
-        .sentence-auto-toggle.active { background:var(--woi-dynamic); }
-        .sentence-auto-toggle:not(.active)::after { content:''; position:absolute; left:-18%; right:-18%; top:50%; height:2px; background:rgba(255,255,255,0.92); transform:rotate(-22deg); transform-origin:center; pointer-events:none; }
+        .sentence-auto-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 5px 9px;
+    min-height: 28px;
+
+    background: #fff;
+    color: #7d8490;
+
+    border: 1px solid #e2e5eb;
+    border-radius: 999px;
+
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+
+    cursor: pointer;
+    white-space: nowrap;
+
+    transition:
+        background .15s ease,
+        border-color .15s ease,
+        color .15s ease,
+        transform .1s ease;
+}
+
+/* 左边的小状态点 */
+.sentence-auto-toggle::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    flex: 0 0 6px;
+
+    border-radius: 50%;
+    background: #c9cdd5;
+
+    transition:
+        background .15s ease,
+        box-shadow .15s ease;
+}
+
+/* 开启 */
+.sentence-auto-toggle.active {
+    background: rgba(var(--woi-dynamic-rgb), 0.10);
+    border-color: rgba(var(--woi-dynamic-rgb), 0.35);
+    color: var(--woi-dynamic);
+}
+
+.sentence-auto-toggle.active::before {
+    background: var(--woi-dynamic);
+    box-shadow: 0 0 0 3px rgba(var(--woi-dynamic-rgb), 0.12);
+}
+
+/* 鼠标经过 */
+.sentence-auto-toggle:hover {
+    border-color: #c8cdd6;
+    transform: translateY(-1px);
+}
+
+/* 点击 */
+.sentence-auto-toggle:active {
+    transform: translateY(0);
+}
         .sentence-text { cursor:pointer; }
         .sentence-actions { display:flex; justify-content:center; gap:10px; margin-top:22px; flex-wrap:wrap; }
         @media (max-width: 768px) {
