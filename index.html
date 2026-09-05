@@ -6133,12 +6133,43 @@ async function saveManualStudySession() {
             container.innerHTML = `<h3>${t('sentenceEmpty')}</h3>`;
             return;
         }
+if (sentenceSession.index >= sentenceSession.items.length) {
+    if (sentenceSession.limit) {
+        container.innerHTML = `
+            <h2>${t('sentenceDone5')}</h2>
+            <p class="sentence-progress">
+                ${t('sentenceViewed')}: ${sentenceSession.viewed}
+            </p>
+        `;
+        return;
+    }
 
-        if (sentenceSession.index >= sentenceSession.items.length) {
-            if (sentenceSession.limit) {
-                container.innerHTML = `<h2>${t('sentenceDone5')}</h2>
-                    <p class="sentence-progress">${t('sentenceViewed')}: ${sentenceSession.viewed}</p>
-                    <div class="sentence-actions">
+    sentenceSession.items = shuffleArray(buildSentencePool());
+    sentenceSession.index = 0;
+
+    if (sentenceSession.items.length === 0) {
+        container.innerHTML = `<h3>${t('sentenceEmpty')}</h3>`;
+        return;
+    }
+}
+
+const item = sentenceSession.items[sentenceSession.index];
+        const transHtml = sentenceSession.revealed
+            ? `<div class="sentence-translation">${item.trans || '—'}</div>`
+            : '';
+        const autoSpeakText = getLanguageText({ en: 'Auto Read', ja: '自動朗読', pt: 'Leitura auto', ko: '자동 읽기', es: 'Lectura auto' });
+        const autoNextText = getLanguageText({ en: 'Auto Next', ja: '自動送り', pt: 'Avanço auto', ko: '자동 넘김', es: 'Avance auto' });
+     
+        container.innerHTML = `
+            <div class="sentence-status">
+                <div class="sentence-count">${sentenceSession.index + 1} / ${sentenceSession.items.length}</div>
+                <button class="sentence-auto-toggle ${sentenceAutoSpeak ? 'active' : ''}" onclick="toggleSentenceAutoSpeak()">${autoSpeakText}</button>
+                <button class="sentence-auto-toggle ${sentenceAutoNext ? 'active' : ''}" onclick="toggleSentenceAutoNext()">${autoNextText}</button>
+            </div>
+            <div class="sentence-text" onclick="toggleSentenceTranslation()">${item.text}</div>
+            ${item.word ? `<div class="sentence-word">${item.word}</div>` : ''}
+            ${transHtml}
+           <div class="sentence-actions">
     <button
         class="btn-action btn-primary sentence-next-action"
         onclick="nextSentence()">
@@ -6168,38 +6199,7 @@ async function saveManualStudySession() {
             es: 'Traducción'
         })}
     </button>
-</div>
-                return;
-            }
-            sentenceSession.items = shuffleArray(buildSentencePool());
-            sentenceSession.index = 0;
-            if (sentenceSession.items.length === 0) {
-                container.innerHTML = `<h3>${t('sentenceEmpty')}</h3>`;
-                return;
-            }
-        }
-
-        const item = sentenceSession.items[sentenceSession.index];
-        const transHtml = sentenceSession.revealed
-            ? `<div class="sentence-translation">${item.trans || '—'}</div>`
-            : '';
-        const autoSpeakText = getLanguageText({ en: 'Auto Read', ja: '自動朗読', pt: 'Leitura auto', ko: '자동 읽기', es: 'Lectura auto' });
-        const autoNextText = getLanguageText({ en: 'Auto Next', ja: '自動送り', pt: 'Avanço auto', ko: '자동 넘김', es: 'Avance auto' });
-     
-        container.innerHTML = `
-            <div class="sentence-status">
-                <div class="sentence-count">${sentenceSession.index + 1} / ${sentenceSession.items.length}</div>
-                <button class="sentence-auto-toggle ${sentenceAutoSpeak ? 'active' : ''}" onclick="toggleSentenceAutoSpeak()">${autoSpeakText}</button>
-                <button class="sentence-auto-toggle ${sentenceAutoNext ? 'active' : ''}" onclick="toggleSentenceAutoNext()">${autoNextText}</button>
-            </div>
-            <div class="sentence-text" onclick="toggleSentenceTranslation()">${item.text}</div>
-            ${item.word ? `<div class="sentence-word">${item.word}</div>` : ''}
-            ${transHtml}
-            <div class="sentence-actions">
-                <button class="btn-action btn-secondary" onclick="event.stopPropagation(); speakCurrentSentence()">🔊 ${getLanguageText({ en: 'Replay', ja: 'もう一度聞く', pt: 'Ouvir de novo', ko: '다시 듣기', es: 'Reproducir' })}</button>
-                <button class="btn-action btn-primary sentence-next-action" onclick="nextSentence()">${t('sentenceNext')}</button>
-                <button class="btn-action btn-secondary sentence-edit-action" onclick="handleEdit()">${editText}</button>
-            </div>`;
+</div>`;
 
         if (!isSentencePanelVisible()) return;
 
