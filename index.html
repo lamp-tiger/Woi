@@ -151,12 +151,43 @@
         .sentence-text { cursor:pointer; }
         .sentence-actions { display:flex; justify-content:center; gap:10px; margin-top:22px; flex-wrap:wrap; }
         @media (max-width: 768px) {
-            .sentence-text { font-size: 22px; line-height: 1.8; }
-            .sentence-actions { display:grid; grid-template-columns: 1fr 1fr; width:100%; }
-            .sentence-actions .sentence-next-action { grid-column:1 / -1; width:100%; }
-            .sentence-actions .sentence-edit-action { grid-column:2; width:100%; }
-            .sentence-actions .btn-action { min-width:0; }
-        }
+    .sentence-text {
+        font-size: 22px;
+        line-height: 1.8;
+    }
+
+    .sentence-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        width: 100%;
+    }
+
+    /* 下一句：第一行占满 */
+    .sentence-actions .sentence-next-action {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        width: 100%;
+    }
+
+    /* 再听一次：左下 */
+    .sentence-actions .sentence-replay-action {
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    /* 翻译：右下 */
+    .sentence-actions .sentence-translation-action {
+        grid-column: 2;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    .sentence-actions .btn-action {
+        min-width: 0;
+    }
+}
         .btn-primary { background: var(--accent); color: white; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-secondary { background: var(--woi-static); color: white; }
@@ -6046,9 +6077,36 @@ async function saveManualStudySession() {
                 container.innerHTML = `<h2>${t('sentenceDone5')}</h2>
                     <p class="sentence-progress">${t('sentenceViewed')}: ${sentenceSession.viewed}</p>
                     <div class="sentence-actions">
-                        <button class="btn-action btn-primary sentence-next-action" onclick="startSentenceMode(5)">${t('sentenceMore5')}</button>
-                        <button class="btn-action btn-secondary sentence-edit-action" onclick="startSentenceMode(null)">${t('sentenceBrowse')}</button>
-                    </div>`;
+    <button
+        class="btn-action btn-primary sentence-next-action"
+        onclick="nextSentence()">
+        ${t('sentenceNext')}
+    </button>
+
+    <button
+        class="btn-action btn-secondary sentence-replay-action"
+        onclick="event.stopPropagation(); speakCurrentSentence()">
+        🔊 ${getLanguageText({
+            en: 'Replay',
+            ja: 'もう一度聞く',
+            pt: 'Ouvir de novo',
+            ko: '다시 듣기',
+            es: 'Reproducir'
+        })}
+    </button>
+
+    <button
+        class="btn-action btn-secondary sentence-translation-action"
+        onclick="event.stopPropagation(); toggleSentenceTranslation()">
+        ${getLanguageText({
+            en: 'Translation',
+            ja: '翻訳',
+            pt: 'Tradução',
+            ko: '번역',
+            es: 'Traducción'
+        })}
+    </button>
+</div>
                 return;
             }
             sentenceSession.items = shuffleArray(buildSentencePool());
@@ -6065,8 +6123,7 @@ async function saveManualStudySession() {
             : '';
         const autoSpeakText = getLanguageText({ en: 'Auto Read', ja: '自動朗読', pt: 'Leitura auto', ko: '자동 읽기', es: 'Lectura auto' });
         const autoNextText = getLanguageText({ en: 'Auto Next', ja: '自動送り', pt: 'Avanço auto', ko: '자동 넘김', es: 'Avance auto' });
-        const editText = getLanguageText({ en: 'Edit (Tab)', ja: '編集 (Tab)', pt: 'Editar (Tab)', ko: '수정 (Tab)', es: 'Editar (Tab)' });
-
+     
         container.innerHTML = `
             <div class="sentence-status">
                 <div class="sentence-count">${sentenceSession.index + 1} / ${sentenceSession.items.length}</div>
