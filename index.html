@@ -3271,16 +3271,8 @@ function openStudyAnalytics() {
         langLeft.classList.add('hidden');
     }
 
-    // 左侧显示分析页标题
-    const title = document.getElementById('analytics-title');
 
-    if (title) {
-        title.textContent = getLanguageText({ en: 'Study Analytics', ja: '学習分析', pt: 'Análise de estudo', ko: '학습 분석', es: 'Análisis de estudio' });
-
-        title.classList.remove('hidden');
-    }
-
-
+    
     // 隐藏主页导航
     const nav = document.querySelector('.nav');
 
@@ -3353,13 +3345,6 @@ function closeStudyAnalytics() {
     }
 
 
-    // 隐藏分析标题
-    const title =
-        document.getElementById('analytics-title');
-
-    if (title) {
-        title.classList.add('hidden');
-    }
 
 
     // 隐藏分析页
@@ -3421,138 +3406,72 @@ function closeStudyAnalytics() {
 // 长按600ms  打开学习分析
 // 分析页单击 ⌂ 返回主页
 // ============================================================
-
 function setupStudyTimerGestures() {
-
-    const button =
-        document.getElementById('study-timer-button');
-
+    const button = document.getElementById('study-timer-button');
     if (!button) return;
 
-
-    // 防止 init 被意外执行两次时重复绑定
-    if (button.dataset.gestureReady === '1') {
-        return;
-    }
-
+    if (button.dataset.gestureReady === '1') return;
     button.dataset.gestureReady = '1';
 
-
-    let clickTimer = null;
     let longPressTimer = null;
     let longPressed = false;
 
+    button.addEventListener('pointerdown', () => {
+        longPressed = false;
 
-    // ---------- 长按 ----------
+        longPressTimer = setTimeout(async () => {
+            longPressed = true;
+            longPressTimer = null;
 
-    button.addEventListener(
-        'pointerdown',
-        () => {
+            button.disabled = true;
 
-            // 分析页不需要长按
-            if (studyAnalyticsOpen) {
-                return;
-            }
+            try {
+                if (studyAnalyticsOpen) {
+                    // 分析页：长按回主页
+                    closeStudyAnalytics();
+                    return;
+                }
 
-            longPressed = false;
+                // 主页：如果正在计时，先结束
+                if (activeStudySession) {
+                    await stopStudyTimer();
+                }
 
-            longPressTimer =
-                setTimeout(() => {
-
-                    longPressed = true;
-
-                    // 如果之前有等待执行的单击，取消
-                    if (clickTimer) {
-                        clearTimeout(clickTimer);
-                        clickTimer = null;
-                    }
-
-                    openStudyAnalytics();
-
-                }, 600);
-        }
-    );
-
-
-    function cancelLongPress() {
-
-        if (longPressTimer) {
-            clearTimeout(longPressTimer);
-        }
-
-        longPressTimer = null;
-    }
-
-
-    button.addEventListener(
-        'pointerup',
-        cancelLongPress
-    );
-
-    button.addEventListener(
-        'pointercancel',
-        cancelLongPress
-    );
-
-    button.addEventListener(
-        'pointerleave',
-        cancelLongPress
-    );
-
-
-    // ---------- 单击 / 双击 ----------
-
-    button.addEventListener(
-        'click',
-        () => {
-
-            // 长按松手后浏览器通常还会产生 click
-            // 这里把它吃掉
-            if (longPressed) {
-
-                longPressed = false;
-
-                return;
-            }
-
-
-            // 已经在分析页：
-            // 单击右上角房子直接回主页
-            if (studyAnalyticsOpen) {
-
-                closeStudyAnalytics();
-
-                return;
-            }
-
-
-            // 已经存在一次等待中的 click
-            // = 第二次点击
-            // = 双击
-            if (clickTimer) {
-
-                clearTimeout(clickTimer);
-
-                clickTimer = null;
-
+                // 然后进入分析
                 openStudyAnalytics();
 
-                return;
+            } finally {
+                button.disabled = false;
             }
+        }, 600);
+    });
 
-
-            // 第一次点击先等待 160ms
-            // 如果没有第二次点击，才真正 Start / Stop
-            clickTimer =
-                setTimeout(async () => {
-
-                    clickTimer = null;
-
-                    await toggleStudyTimer();
-
-                }, 160);
+    function cancelLongPress() {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
         }
-    );
+    }
+
+    button.addEventListener('pointerup', cancelLongPress);
+    button.addEventListener('pointercancel', cancelLongPress);
+    button.addEventListener('pointerleave', cancelLongPress);
+
+    button.addEventListener('click', async () => {
+        // 长按结束后浏览器还会触发 click，吃掉
+        if (longPressed) {
+            longPressed = false;
+            return;
+        }
+
+        // 分析页单击不做任何事
+        if (studyAnalyticsOpen) {
+            return;
+        }
+
+        // 主页单击：开始 / 结束
+        await toggleStudyTimer();
+    });
 }
     // ============================================================
 // Study Analytics Data
@@ -3856,7 +3775,6 @@ function updateStudyAnalyticsLanguage() {
     setText('analytics-trend-title', langLabels.trend);
     setText('analytics-history-title', langLabels.history);
     setText('analytics-add-label', langLabels.add);
-    setText('analytics-title', langLabels.title);
     setText('study-add-title', langLabels.addTitle);
     setText('study-add-lang-label', langLabels.language);
     setText('study-add-duration-label', langLabels.duration);
