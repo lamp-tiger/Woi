@@ -68,6 +68,10 @@
         display: none !important;
     }
 
+    .mobile-next-hint {
+        display: block;
+    }
+
     .word-title {
         font-size: 24px;
         line-height: 1.45;
@@ -120,6 +124,7 @@
         .btn-main-action { height: 60px; font-size: 20px; border-radius: 10px; border: none; cursor: pointer; font-weight: bold; background: var(--accent); color: white; }
         .btn-sub-group { display: flex; gap: 10px; }
         .btn-sub-action { flex: 1; height: 45px; border-radius: 8px; border: none; color: white; font-weight: bold; }
+        .mobile-next-hint { display:none; color:var(--muted); text-align:center; font-size:12px; margin-top:-2px; }
 
         #quick-edit input { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 14px; box-sizing: border-box; }
         .prompt-text { width: 100%; height: 100px; font-size: 13px; padding: 10px; border: 1px solid var(--line); border-radius: 5px; box-sizing: border-box; font-family: inherit; }
@@ -138,10 +143,19 @@
         .sentence-word { display:inline-block; background:var(--static-soft); color:var(--woi-dynamic); padding:5px 12px; border-radius:20px; font-size:13px; margin-top:8px; }
         .sentence-translation { margin: 22px auto 8px; padding: 18px; max-width: 760px; background:rgba(var(--woi-static-rgb), 0.08); border-radius:10px; font-size:18px; color:#555; }
         .sentence-progress { color:#999; font-size:13px; }
+        .sentence-status { display:grid; grid-template-columns: 1fr auto auto; align-items:center; gap:8px; margin-bottom:18px; }
+        .sentence-count { text-align:left; color:#999; font-size:13px; font-variant-numeric: tabular-nums; }
+        .sentence-auto-toggle { position:relative; overflow:hidden; background:var(--woi-static); color:white; border:none; border-radius:8px; padding:8px 12px; font-weight:bold; cursor:pointer; }
+        .sentence-auto-toggle.active { background:var(--woi-dynamic); }
+        .sentence-auto-toggle:not(.active)::after { content:''; position:absolute; left:-18%; right:-18%; top:50%; height:2px; background:rgba(255,255,255,0.92); transform:rotate(-22deg); transform-origin:center; pointer-events:none; }
+        .sentence-text { cursor:pointer; }
         .sentence-actions { display:flex; justify-content:center; gap:10px; margin-top:22px; flex-wrap:wrap; }
         @media (max-width: 768px) {
             .sentence-text { font-size: 22px; line-height: 1.8; }
-            .sentence-actions .btn-action { flex:1; min-width:130px; }
+            .sentence-actions { display:grid; grid-template-columns: 1fr 1fr; width:100%; }
+            .sentence-actions .sentence-next-action { grid-column:1 / -1; width:100%; }
+            .sentence-actions .sentence-edit-action { grid-column:2; width:100%; }
+            .sentence-actions .btn-action { min-width:0; }
         }
         .btn-primary { background: var(--accent); color: white; }
         .btn-danger { background: var(--danger); color: white; }
@@ -1361,6 +1375,7 @@ SUPABASE 数据库表结构说明
         onpointerleave="cancelMobileNextPress()">
     <span class="btn-text-next">确定 / 下一步 (Enter)</span>
 </button>
+            <div class="mobile-next-hint"><span class="mobile-next-hint-text">点击：下一步 · 长按：删除</span></div>
             <div class="btn-sub-group">
                 <button class="btn-sub-action" style="background:var(--woi-static)" onclick="handleRetry()"><span class="btn-text-retry">重来 (Ctrl+Z)</span></button>
                 <button class="btn-sub-action" style="background:var(--woi-static)" onclick="handleEdit()"><span class="btn-text-edit">修改 (Tab)</span></button>
@@ -1996,6 +2011,10 @@ function getImportCountUnit() {
         document.querySelector('.btn-text-next').textContent = t('btnNext');
         document.querySelector('.btn-text-retry').textContent = t('btnRetry');
         document.querySelector('.btn-text-edit').textContent = t('btnEdit');
+        const mobileNextHint = document.querySelector('.mobile-next-hint-text');
+        if (mobileNextHint) {
+            mobileNextHint.textContent = getLanguageText({ en: 'Tap: next · Long press: delete', ja: 'タップ：次へ · 長押し：削除', pt: 'Toque: próximo · Segure: excluir', ko: '탭: 다음 · 길게 누르기: 삭제', es: 'Toque: siguiente · Mantén: eliminar' });
+        }
         document.querySelector('.btn-text-add').textContent = t('btnAdd');
         document.querySelector('.btn-text-save-prompt').textContent = t('btnSavePrompt');
         document.querySelector('.btn-text-copy').textContent = t('btnCopy');
@@ -2565,6 +2584,9 @@ Example Trans: 我想和你谈谈这个问题。`
     let pendingMobileDelete = null;
     let sentenceSession = { items: [], index: 0, revealed: false, limit: null, viewed: 0 };
     let sentenceAutoSpeak = true;
+    let sentenceAutoNext = false;
+    let sentenceAutoNextTimer = null;
+    let sentenceAutoGeneration = 0;
     let sentenceSpeechRate = 0.9;
 
     function loadLocalState() {
@@ -2590,6 +2612,7 @@ Example Trans: 我想和你谈谈这个问题。`
     }
 
     function clearCurrentUserState() {
+        cancelSentenceAutoNext();
         words = [];
         settings = { new: 10, rev: 20, rel: 30 };
         dailyLog = createEmptyDailyLog();
@@ -5355,7 +5378,7 @@ async function saveManualStudySession() {
         
         const learnPanel = document.getElementById('panel-learn');
         if (learnPanel && !learnPanel.classList.contains('hidden')) {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
                 e.preventDefault();
                 await handleRetry();
                 return;
@@ -5656,6 +5679,7 @@ async function saveManualStudySession() {
     }
 
     function startSentenceMode(limit = null) {
+        cancelSentenceAutoNext();
         const pool = shuffleArray(buildSentencePool());
         sentenceSession = {
             items: limit ? pool.slice(0, Math.min(limit, pool.length)) : pool,
@@ -5827,6 +5851,12 @@ async function saveManualStudySession() {
 
     function stopAllSpeech() {
 
+        if (sentenceAutoNextTimer) {
+            clearTimeout(sentenceAutoNextTimer);
+            sentenceAutoNextTimer = null;
+        }
+        sentenceAutoGeneration++;
+
         // 让所有旧的连续朗读失效
         speechGeneration++;
 
@@ -5911,29 +5941,100 @@ async function saveManualStudySession() {
         }
     }
 
-    function speakCurrentSentence() {
-        if (!('speechSynthesis' in window) || sentenceSession.items.length === 0) return;
-        const item = sentenceSession.items[sentenceSession.index];
-        if (!item || !item.text) return;
+    function isSentencePanelVisible() {
+        const panel = document.getElementById('panel-sentences');
+        return !!panel && !panel.classList.contains('hidden') && !studyAnalyticsOpen;
+    }
 
+    function getSentenceAutoToken() {
+        return {
+            generation: sentenceAutoGeneration,
+            index: sentenceSession.index
+        };
+    }
+
+    function isCurrentSentenceAutoToken(token) {
+        return !!token
+            && token.generation === sentenceAutoGeneration
+            && token.index === sentenceSession.index
+            && sentenceAutoNext
+            && isSentencePanelVisible();
+    }
+
+    function cancelSentenceAutoNext() {
+        if (sentenceAutoNextTimer) {
+            clearTimeout(sentenceAutoNextTimer);
+            sentenceAutoNextTimer = null;
+        }
+        sentenceAutoGeneration++;
+    }
+
+    function estimateSentenceReadingMs(text) {
+        const clean = (text || '').trim();
+        const length = clean.length;
+        const rate = Math.max(0.5, Number(sentenceSpeechRate) || 1);
+        const perChar = currentLang === 'en' || currentLang === 'pt' || currentLang === 'es' ? 90 : 180;
+        return Math.max(2500, Math.min(18000, (length * perChar) / rate));
+    }
+
+    function scheduleSentenceAutoNext(delayMs, token) {
+        if (!sentenceAutoNext || !isCurrentSentenceAutoToken(token)) return;
+
+        if (sentenceAutoNextTimer) clearTimeout(sentenceAutoNextTimer);
+        sentenceAutoNextTimer = setTimeout(() => {
+            sentenceAutoNextTimer = null;
+            if (!isCurrentSentenceAutoToken(token)) return;
+            nextSentence(false);
+        }, delayMs);
+    }
+
+    function speakCurrentSentence(onDone = null) {
+        if (!('speechSynthesis' in window) || sentenceSession.items.length === 0) return false;
+        const item = sentenceSession.items[sentenceSession.index];
+        if (!item || !item.text) return false;
+
+        speechGeneration++;
+        const myGeneration = speechGeneration;
         speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(cleanTextForSpeech(item.text));
         utterance.rate = sentenceSpeechRate;
 
         configureUtteranceVoice(utterance);
 
+        utterance.onend = () => {
+            if (myGeneration !== speechGeneration) return;
+            if (typeof onDone === 'function') onDone();
+        };
+
+        utterance.onerror = () => {
+            if (myGeneration !== speechGeneration) return;
+            if (typeof onDone === 'function') onDone();
+        };
+
         speechSynthesis.speak(utterance);
+        return true;
     }
 
     function toggleSentenceAutoSpeak() {
         sentenceAutoSpeak = !sentenceAutoSpeak;
-        renderSentence(false);
-        if (sentenceAutoSpeak) speakCurrentSentence();
+        renderSentence(sentenceAutoSpeak);
     }
 
-    function renderSentence(autoSpeak = true) {
+    function toggleSentenceAutoNext() {
+        sentenceAutoNext = !sentenceAutoNext;
+        if (!sentenceAutoNext) {
+            cancelSentenceAutoNext();
+            renderSentence(false);
+            return;
+        }
+        renderSentence(true);
+    }
+
+    function renderSentence(autoSpeak = true, keepAutoNext = false) {
         const container = document.getElementById('sentence-card');
         if (!container) return;
+
+        if (!keepAutoNext) cancelSentenceAutoNext();
 
         if (sentenceSession.items.length === 0) {
             container.innerHTML = `<h3>${t('sentenceEmpty')}</h3>`;
@@ -5945,12 +6046,11 @@ async function saveManualStudySession() {
                 container.innerHTML = `<h2>${t('sentenceDone5')}</h2>
                     <p class="sentence-progress">${t('sentenceViewed')}: ${sentenceSession.viewed}</p>
                     <div class="sentence-actions">
-                        <button class="btn-action btn-primary" onclick="startSentenceMode(5)">${t('sentenceMore5')}</button>
-                        <button class="btn-action btn-secondary" onclick="startSentenceMode(null)">${t('sentenceBrowse')}</button>
+                        <button class="btn-action btn-primary sentence-next-action" onclick="startSentenceMode(5)">${t('sentenceMore5')}</button>
+                        <button class="btn-action btn-secondary sentence-edit-action" onclick="startSentenceMode(null)">${t('sentenceBrowse')}</button>
                     </div>`;
                 return;
             }
-            // 自由浏览模式读完一轮后自动重新随机排列，继续即可
             sentenceSession.items = shuffleArray(buildSentencePool());
             sentenceSession.index = 0;
             if (sentenceSession.items.length === 0) {
@@ -5963,38 +6063,59 @@ async function saveManualStudySession() {
         const transHtml = sentenceSession.revealed
             ? `<div class="sentence-translation">${item.trans || '—'}</div>`
             : '';
+        const autoSpeakText = getLanguageText({ en: 'Auto Read', ja: '自動朗読', pt: 'Leitura auto', ko: '자동 읽기', es: 'Lectura auto' });
+        const autoNextText = getLanguageText({ en: 'Auto Next', ja: '自動送り', pt: 'Avanço auto', ko: '자동 넘김', es: 'Avance auto' });
+        const editText = getLanguageText({ en: 'Edit (Tab)', ja: '編集 (Tab)', pt: 'Editar (Tab)', ko: '수정 (Tab)', es: 'Editar (Tab)' });
 
         container.innerHTML = `
-            <div class="sentence-progress">${t('sentenceViewed')}: ${sentenceSession.viewed}</div>
-            <div class="sentence-text">${item.text}</div>
+            <div class="sentence-status">
+                <div class="sentence-count">${sentenceSession.index + 1} / ${sentenceSession.items.length}</div>
+                <button class="sentence-auto-toggle ${sentenceAutoSpeak ? 'active' : ''}" onclick="toggleSentenceAutoSpeak()">${autoSpeakText}</button>
+                <button class="sentence-auto-toggle ${sentenceAutoNext ? 'active' : ''}" onclick="toggleSentenceAutoNext()">${autoNextText}</button>
+            </div>
+            <div class="sentence-text" onclick="toggleSentenceTranslation()">${item.text}</div>
             ${item.word ? `<div class="sentence-word">${item.word}</div>` : ''}
             ${transHtml}
             <div class="sentence-actions">
-                <button class="btn-action btn-secondary" onclick="speakCurrentSentence()">🔊 ${getLanguageText({ en: 'Replay', ja: 'もう一度聞く', pt: 'Ouvir de novo', ko: '다시 듣기', es: 'Reproducir' })}</button>
-                <button class="btn-action btn-secondary" onclick="toggleSentenceAutoSpeak()">${sentenceAutoSpeak ? '🔈 ' + (getLanguageText({ en: 'Auto read ON', ja: '自動朗読 ON', pt: 'Leitura auto ON', ko: '자동 읽기 ON', es: 'Lectura auto ON' })) : '🔇 ' + (getLanguageText({ en: 'Auto read OFF', ja: '自動朗読 OFF', pt: 'Leitura auto OFF', ko: '자동 읽기 OFF', es: 'Lectura auto OFF' }))}</button>
-                <button class="btn-action btn-secondary" onclick="toggleSentenceTranslation()">${t('sentenceReveal')} (Space)</button>
-                <button class="btn-action btn-primary" onclick="nextSentence()">${t('sentenceNext')}</button>
+                <button class="btn-action btn-secondary" onclick="event.stopPropagation(); speakCurrentSentence()">🔊 ${getLanguageText({ en: 'Replay', ja: 'もう一度聞く', pt: 'Ouvir de novo', ko: '다시 듣기', es: 'Reproducir' })}</button>
+                <button class="btn-action btn-primary sentence-next-action" onclick="nextSentence()">${t('sentenceNext')}</button>
+                <button class="btn-action btn-secondary sentence-edit-action" onclick="handleEdit()">${editText}</button>
             </div>`;
 
+        if (!isSentencePanelVisible()) return;
+
+        const token = getSentenceAutoToken();
         if (autoSpeak && sentenceAutoSpeak) {
-            setTimeout(speakCurrentSentence, 80);
+            setTimeout(() => {
+                if (sentenceAutoNext && !isCurrentSentenceAutoToken(token)) return;
+                const spoke = speakCurrentSentence(() => {
+                    scheduleSentenceAutoNext(2000, token);
+                });
+                if (!spoke && sentenceAutoNext) {
+                    scheduleSentenceAutoNext(estimateSentenceReadingMs(item.text) + 2000, token);
+                }
+            }, 80);
+        } else if (sentenceAutoNext) {
+            scheduleSentenceAutoNext(estimateSentenceReadingMs(item.text) + 2000, token);
         }
     }
 
     function toggleSentenceTranslation() {
         sentenceSession.revealed = !sentenceSession.revealed;
-        renderSentence(false);
+        renderSentence(false, true);
     }
 
-    function nextSentence() {
+    function nextSentence(manual = true) {
+        if (manual) cancelSentenceAutoNext();
         if (sentenceSession.items.length === 0) return;
         sentenceSession.index++;
         sentenceSession.viewed++;
         sentenceSession.revealed = false;
-        renderSentence();
+        renderSentence(true);
     }
 
     function showPanel(p) { 
+        cancelSentenceAutoNext();
         // 切换页面时取消待执行的语音定时器 + 立即停止当前语音
         if (learningSpeechTimer) {
             clearTimeout(learningSpeechTimer);
