@@ -7203,37 +7203,17 @@ if (
         const nextStates =
             await generateNextVerbStates(state);
 
+        /*
+         * 目标相关候选。
+         *
+         * 不改变任何变形规则，只决定：
+         * 1. 哪些状态值得继续搜索
+         * 2. 哪些状态优先搜索
+         */
+        const rankedNextStates = [];
+
         for (const next of nextStates) {
 
-    /*
-     * 目标导向剪枝：
-     *
-     * 只有当前生成形式仍可能继续变成目标时，
-     * 才允许进入 BFS。
-     *
-     * 例如目标是：
-     * 作成した
-     *
-     * 保留：
-     * 作成して
-     * 作成した
-     *
-     * 大量无关的：
-     * 作成されている...
-     * 作成させている...
-     * 不再无限展开。
-     */
-    const targetRelated =
-        surfaceForm.startsWith(next.surface) ||
-        next.surface.startsWith(surfaceForm) ||
-        next.surface === surfaceForm ||
-
-        /*
-         * ない / ます / 派生一段等形式，
-         * 后续会发生尾部替换，因此只要求
-         * 前部词干仍与目标一致。
-         */
-        (() => {
             const commonLength =
                 Math.min(
                     next.surface.length,
@@ -7250,26 +7230,75 @@ if (
                 same++;
             }
 
-            return same >=
-                Math.min(
-                    2,
-                    commonLength
-                );
-        })();
+            const targetRelated =
+                surfaceForm.startsWith(next.surface) ||
+                next.surface.startsWith(surfaceForm) ||
+                next.surface === surfaceForm ||
+                same >=
+                    Math.min(
+                        2,
+                        commonLength
+                    );
 
-    if (!targetRelated) {
-        continue;
-    }
+            if (!targetRelated) {
+                continue;
+            }
 
-    queue.push({
-        ...next,
+            /*
+             * 分数越高，说明和目标越接近。
+             *
+             * 完整前缀优先级最高：
+             *
+             * 作成していただけない
+             * 比
+             * 作成していただけられる
+             * 更应该先搜索。
+             */
+            let score = same;
 
-        path: [
-            ...state.path,
+            if (
+                surfaceForm.startsWith(
+                    next.surface
+                )
+            ) {
+                score += 10000;
+            }
+
+            if (
+                next.surface ===
+                surfaceForm
+            ) {
+                score += 20000;
+            }
+
+            rankedNextStates.push({
+                next,
+                score
+            });
+        }
+
+        /*
+         * 当前父节点生成的候选中，
+         * 与目标最接近的先进入搜索。
+         */
+        rankedNextStates.sort(
+            (a, b) =>
+                b.score - a.score
+        );
+
+        for (const {
             next
-        ]
-    });
-    }
+        } of rankedNextStates) {
+
+            queue.push({
+                ...next,
+
+                path: [
+                    ...state.path,
+                    next
+                ]
+            });
+        }
 }
 
 if (
