@@ -7018,19 +7018,31 @@ if (
     }));
 
     const results = [];
-    const visited = new Set();
+const visited = new Set();
 
-    /*
-     * BFS 找到目标以后，
-     * 只继续检查“同一深度”的其他路径。
-     *
-     * 这样：
-     * 食べられる
-     * 仍然可以同时保留 passive / potential
-     *
-     * 但不会继续把整棵无限组合树全部生成。
-     */
-    let foundDepth = null;
+/*
+ * 如果完整 surface 不是纯动词形式，
+ * 记录搜索过程中能够解释的最长动词路径。
+ *
+ * 例如：
+ * 作成していただけないでしょうか
+ *
+ * Verb Engine 最终只负责：
+ * 作成していただけない
+ *
+ * 剩余的：
+ * でしょうか
+ *
+ * 留给 Grammar Engine。
+ */
+let bestPrefixPath = null;
+let bestPrefixLength = 0;
+
+/*
+ * BFS 找到目标以后，
+ * 只继续检查“同一深度”的其他路径。
+ */
+let foundDepth = null;
 
     const MAX_VISITED_STATES = 1500;
     const MAX_SEARCH_MS = 800;
@@ -7089,6 +7101,22 @@ if (
         }
 
         visited.add(key);
+        /*
+ * 记录当前最长的“完整前缀”。
+ *
+ * 注意：
+ * 这里只记录，不改变 BFS 搜索。
+ * 所以不会影响：
+ * いただく → いただける → いただけない
+ * 这种尾部替换路径。
+ */
+if (
+    surfaceForm.startsWith(state.surface) &&
+    state.surface.length > bestPrefixLength
+) {
+    bestPrefixLength = state.surface.length;
+    bestPrefixPath = state.path;
+}
 
         /*
          * 找到目标
@@ -7188,10 +7216,32 @@ if (
             next
         ]
     });
-}
     }
+}
 
-    return results;
+if (
+    results.length === 0 &&
+    bestPrefixPath
+) {
+    console.log(
+        '[VerbEngine] best prefix:',
+        {
+            dictionaryForm,
+            surfaceForm,
+            matchedSurface:
+                bestPrefixPath[
+                    bestPrefixPath.length - 1
+                ]?.surface,
+            remainder:
+                surfaceForm.slice(
+                    bestPrefixLength
+                ),
+            path: bestPrefixPath
+        }
+    );
+}
+
+return results;
 }
 
     async function getCachedVerbPaths(
