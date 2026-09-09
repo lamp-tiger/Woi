@@ -6099,6 +6099,9 @@ async function saveManualStudySession() {
 
     const VERB_ENGINE_VERSION = 2;
 
+    const verbPathMemoryCache = new Map();
+    const verbDictionaryMemoryCache = new Map();
+
     const VERB_MEMORY_ORDER = [
         'sound_change',
         'A',
@@ -6377,6 +6380,11 @@ async function saveManualStudySession() {
     ];
 
     async function getVerbDictionaryEntry(dictionaryForm) {
+
+        if (verbDictionaryMemoryCache.has(dictionaryForm)) {
+            return verbDictionaryMemoryCache.get(dictionaryForm);
+        }
+
         const { data, error } = await sb
             .from('verb_dictionary')
             .select('dictionary_form,reading,verb_class')
@@ -6385,6 +6393,13 @@ async function saveManualStudySession() {
 
         if (error) {
             throw error;
+        }
+
+        if (data) {
+            verbDictionaryMemoryCache.set(
+                dictionaryForm,
+                data
+            );
         }
 
         return data;
@@ -7100,16 +7115,16 @@ async function saveManualStudySession() {
         dictionaryForm,
         surfaceForm
     ) {
-        const cached =
-            await getCachedVerbPaths(
-                dictionaryForm,
-                surfaceForm
-            );
+        const key =
+            `${VERB_ENGINE_VERSION}::${dictionaryForm}::${surfaceForm}`;
 
-        if (cached) {
-            return cached;
+        // ① 浏览器内存有结果 → 直接返回
+        if (verbPathMemoryCache.has(key)) {
+            return verbPathMemoryCache.get(key);
         }
 
+        // ② 获取词典信息
+        // getVerbDictionaryEntry 本身已有内存缓存
         const entry =
             await getVerbDictionaryEntry(
                 dictionaryForm
@@ -7122,6 +7137,7 @@ async function saveManualStudySession() {
             );
         }
 
+        // ③ 本地计算，不再等待 Supabase cache
         const paths =
             await findVerbPaths(
                 dictionaryForm,
@@ -7129,11 +7145,23 @@ async function saveManualStudySession() {
                 entry.verb_class
             );
 
-        await saveCachedVerbPaths(
+        // ④ 写入浏览器内存
+        verbPathMemoryCache.set(
+            key,
+            paths
+        );
+
+        // ⑤ Supabase 后台保存，不阻塞弹窗
+        saveCachedVerbPaths(
             dictionaryForm,
             surfaceForm,
             paths
-        );
+        ).catch(error => {
+            console.warn(
+                'background verb cache save failed:',
+                error
+            );
+        });
 
         return paths;
     }
