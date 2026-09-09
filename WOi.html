@@ -7058,18 +7058,27 @@ let foundDepth = null;
             performance.now() - searchStartedAt > MAX_SEARCH_MS
         ) {
             console.warn(
-                '[VerbEngine] search aborted:',
-                {
-                    dictionaryForm,
-                    surfaceForm,
-                    processedStates,
-                    elapsed:
-                        Math.round(
-                            performance.now() -
-                            searchStartedAt
-                        ) + 'ms'
-                }
-            );
+    '[VerbEngine] search aborted:',
+    {
+        dictionaryForm,
+        surfaceForm,
+        processedStates,
+        elapsed:
+            Math.round(
+                performance.now() -
+                searchStartedAt
+            ) + 'ms',
+
+        bestPrefixLength,
+
+        bestPrefixSurface:
+            bestPrefixPath?.[
+                bestPrefixPath.length - 1
+            ]?.surface || null,
+
+        bestPrefixPath
+    }
+);
     
             break;
         }
