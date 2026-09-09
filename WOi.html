@@ -6550,6 +6550,26 @@ async function saveManualStudySession() {
                 ? SURU_RULES
                 : KURU_RULES;
 
+        /*
+         * 支持复合サ変：
+         *
+         * する       → prefix = ""
+         * 作成する   → prefix = "作成"
+         * 準備する   → prefix = "準備"
+         * 確認する   → prefix = "確認"
+         */
+        let prefix = '';
+
+        if (
+            verbClass === 'suru' &&
+            dictionaryForm.endsWith('する')
+        ) {
+            prefix = dictionaryForm.slice(
+                0,
+                -2
+            );
+        }
+
         const output = [];
 
         for (const [functionName, surface] of
@@ -6580,7 +6600,7 @@ async function saveManualStudySession() {
             output.push(
                 makeVerbNode(
                     functionName,
-                    surface,
+                    prefix + surface,
                     outputClass
                 )
             );
