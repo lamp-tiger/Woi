@@ -1120,16 +1120,6 @@
     display: none;
 }
 
-.verb-tree-dialog {
-    width: min(1000px, 96vw);
-    max-height: 90vh;
-    overflow: auto;
-    box-sizing: border-box;
-    background: #fff;
-    border-radius: 16px;
-    padding: 22px;
-}
-
 .verb-tree-head {
     display: flex;
     justify-content: space-between;
@@ -1150,55 +1140,324 @@
     cursor: pointer;
 }
 
-.verb-tree-grid {
-    display: grid;
-    grid-template-columns: repeat(6, minmax(110px, 1fr));
-    gap: 8px;
+/* ================================
+   Woi Japanese Verb Tree
+================================ */
+
+.verb-tree-dialog {
+    width: min(1100px, 94vw);
+    max-height: 88vh;
+    overflow: auto;
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 30px 36px;
 }
 
+.verb-root {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.verb-root-word {
+    font-size: 30px;
+    font-weight: 700;
+    color: #24344d;
+}
+
+.verb-root-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--woi-static);
+    margin-top: 8px;
+}
+
+.verb-root-line {
+    width: 2px;
+    height: 30px;
+    background: rgba(var(--woi-static-rgb), 0.55);
+}
+
+
+/* 六大类 */
+
+.verb-tree-branches {
+    position: relative;
+
+    display: grid;
+    grid-template-columns: repeat(6, minmax(135px, 1fr));
+
+    gap: 12px;
+
+    min-width: 900px;
+
+    padding-top: 25px;
+}
+
+
+/* 六类上面的横线 */
+
+.verb-tree-branches::before {
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+    left: calc(100% / 12);
+    right: calc(100% / 12);
+
+    height: 2px;
+
+    background: rgba(var(--woi-static-rgb), 0.45);
+}
+
+
 .verb-tree-column {
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 10px;
+    position: relative;
+    text-align: center;
+
+    border: none;
+    padding: 0 5px;
+
     min-width: 0;
 }
 
-.verb-tree-category {
-    text-align: center;
-    color: var(--woi-static);
-    font-weight: 800;
-    font-size: 18px;
+
+/* 横线到每个分类 */
+
+.verb-tree-branch-line {
+    position: absolute;
+
+    width: 2px;
+    height: 25px;
+
+    top: -25px;
+    left: 50%;
+
+    transform: translateX(-50%);
+
+    background: rgba(var(--woi-static-rgb), 0.45);
 }
+
+
+.verb-tree-category {
+    font-size: 21px;
+    font-weight: 700;
+
+    color: var(--woi-static);
+}
+
 
 .verb-tree-memory {
-    text-align: center;
-    color: var(--muted);
-    font-size: 11px;
-    margin-bottom: 9px;
+    margin-top: 3px;
+
+    min-height: 22px;
+
+    font-size: 13px;
+
+    color: #6f7a8d;
 }
+
+
+.verb-tree-column-line {
+    width: 2px;
+    height: 16px;
+
+    margin: 6px auto 0;
+
+    background: rgba(var(--woi-static-rgb), 0.28);
+}
+
+
+.verb-tree-nodes {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+
+    margin-top: 0;
+}
+
+
+/* 普通一级节点 */
 
 .verb-tree-node {
-    margin: 6px 0;
-    padding: 7px 6px;
-    border-radius: 7px;
-    background: var(--static-soft);
-    opacity: 0.42;
-    text-align: center;
-    font-size: 13px;
+    position: relative;
+
+    padding: 9px 7px;
+
+    border: 1px solid transparent;
+    border-radius: 11px;
+
+    background: rgba(var(--woi-static-rgb), 0.055);
+
+    color: #9ba4b4;
+
+    transition:
+        opacity .2s ease,
+        border-color .2s ease,
+        background .2s ease;
 }
+
+
+.verb-tree-surface {
+    font-size: 17px;
+    line-height: 1.35;
+}
+
+
+.verb-tree-function {
+    margin-top: 2px;
+
+    font-size: 10px;
+
+    color: #b2bac7;
+}
+
+
+/* 当前路径一级节点 */
 
 .verb-tree-node.active {
-    opacity: 1;
-    background: var(--dynamic-soft);
-    border: 1px solid var(--woi-dynamic);
+    border-color: rgba(var(--woi-dynamic-rgb), 0.55);
+
+    background: rgba(var(--woi-dynamic-rgb), 0.11);
+
+    color: #29364a;
+
+    box-shadow:
+        0 3px 12px rgba(var(--woi-dynamic-rgb), 0.10);
 }
 
-.verb-tree-node.final {
-    opacity: 1;
-    background: var(--woi-dynamic);
-    color: #fff;
-    font-weight: 800;
+
+.verb-tree-node.active > .verb-tree-function {
+    color: var(--woi-dynamic);
 }
+
+
+/* 当前一级节点本身就是最终形式 */
+
+.verb-tree-node.final {
+    border-color: var(--woi-dynamic);
+
+    background: rgba(var(--woi-dynamic-rgb), 0.18);
+
+    font-weight: 700;
+}
+
+
+/* ================================
+   当前路径继续向下展开
+================================ */
+
+.verb-continuations {
+    margin-top: 4px;
+}
+
+
+.verb-continuation-path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+
+.verb-path-arrow {
+    height: 25px;
+
+    font-size: 18px;
+    line-height: 25px;
+
+    color: var(--woi-dynamic);
+}
+
+
+.verb-path-step-label {
+    margin-bottom: 4px;
+
+    font-size: 11px;
+    font-weight: 700;
+
+    color: var(--woi-dynamic);
+}
+
+
+.verb-path-step-label span {
+    margin-left: 3px;
+
+    font-weight: 400;
+
+    color: #8993a3;
+}
+
+
+.verb-path-node {
+    width: 100%;
+
+    box-sizing: border-box;
+
+    padding: 8px 6px;
+
+    border: 1px solid rgba(var(--woi-dynamic-rgb), 0.55);
+    border-radius: 10px;
+
+    background: rgba(var(--woi-dynamic-rgb), 0.10);
+
+    color: #29364a;
+}
+
+
+.verb-path-surface {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+
+.verb-path-function {
+    margin-top: 2px;
+
+    font-size: 10px;
+
+    color: #9a7d70;
+}
+
+
+/* 最终实际形式 */
+
+.verb-path-node.final {
+    border: 2px solid var(--woi-dynamic);
+
+    background: rgba(var(--woi-dynamic-rgb), 0.20);
+
+    box-shadow:
+        0 4px 16px rgba(var(--woi-dynamic-rgb), 0.18);
+}
+
+
+.verb-path-node.final .verb-path-surface {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+
+.verb-final-mark {
+    margin-top: 4px;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    color: var(--woi-dynamic);
+}
+
+
+/* 非当前路径进一步弱化 */
+
+.verb-tree-node:not(.active):not(.final) {
+    opacity: 0.56;
+}
+
 
 .verb-path-detail {
     margin-top: 14px;
@@ -1208,14 +1467,27 @@
     font-size: 13px;
 }
 
-@media (max-width: 768px) {
-    .verb-tree-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
+
+/* 手机不再把六类拆成 2 列。
+   保留完整树，横向滚动。 */
+
+@media (max-width: 700px) {
 
     .verb-tree-dialog {
-        padding: 14px;
+        width: 94vw;
+        padding: 22px 18px 30px;
     }
+
+    .verb-tree-branches {
+        grid-template-columns: repeat(6, 135px);
+
+        min-width: 870px;
+    }
+
+    .verb-root-word {
+        font-size: 26px;
+    }
+
 }
     </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -6378,123 +6650,214 @@ async function saveManualStudySession() {
         `).join('');
     }
 
-    async function renderVerbTree(
-        dictionaryForm,
-        surfaceForm
-    ) {
-        const entry =
-            await getVerbDictionaryEntry(
-                dictionaryForm
-            );
+    async function renderVerbTree(dictionaryForm, surfaceForm, entry, paths) {
+        const firstLevel = await generateVerbFirstLevel(
+            dictionaryForm,
+            entry.verb_class
+        );
 
-        if (!entry) {
-            throw new Error(
-                `verb_dictionary 未登记 ${dictionaryForm}`
-            );
-        }
+        const activePaths = Array.isArray(paths) ? paths : [];
+        const activeFirstKeys = new Set();
+        const finalSurface = surfaceForm;
 
-        const firstLevel =
-            await generateVerbFirstLevel(
-                dictionaryForm,
-                entry.verb_class
-            );
-
-        const paths =
-            await resolveVerbPaths(
-                dictionaryForm,
-                surfaceForm
-            );
-
-        const activeFunctions = new Set();
-
-        for (const path of paths) {
-            for (const node of path) {
-                activeFunctions.add(
-                    node.functionName +
-                    '|' +
-                    node.surface
+        activePaths.forEach(path => {
+            if (path && path.length) {
+                activeFirstKeys.add(
+                    `${path[0].functionName}::${path[0].surface}`
                 );
             }
-        }
+        });
 
-        const groups = {};
+        const grouped = {};
 
-        for (const category of VERB_MEMORY_ORDER) {
-            groups[category] = [];
-        }
+        VERB_MEMORY_ORDER.forEach(category => {
+            grouped[category] = [];
+        });
 
-        for (const node of firstLevel) {
+        firstLevel.forEach(node => {
             if (
                 node.memoryCategory &&
-                groups[node.memoryCategory]
+                grouped[node.memoryCategory]
             ) {
-                groups[node.memoryCategory].push(node);
+                grouped[node.memoryCategory].push(node);
             }
-        }
+        });
 
-        const html = `
-            <div class="verb-tree-grid">
-                ${VERB_MEMORY_ORDER.map(category => {
-                    const meta =
-                        VERB_MEMORY_META[category];
+        const columnsHTML = VERB_MEMORY_ORDER.map(category => {
+            const meta = VERB_MEMORY_META[category];
+            const nodes = grouped[category] || [];
+
+            const nodesHTML = nodes.map(node => {
+                const key =
+                    `${node.functionName}::${node.surface}`;
+
+                const isActive = activeFirstKeys.has(key);
+                const isFinal = node.surface === finalSurface;
+
+                return `
+                    <div class="
+                        verb-tree-node
+                        ${isActive ? 'active' : ''}
+                        ${isFinal ? 'final' : ''}
+                    ">
+                        <div class="verb-tree-surface">
+                            ${escapeHtml(node.surface)}
+                        </div>
+
+                        <div class="verb-tree-function">
+                            ${escapeHtml(node.functionName)}
+                        </div>
+
+                        ${
+                            isActive
+                                ? renderActiveContinuation(
+                                    node,
+                                    activePaths,
+                                    finalSurface
+                                  )
+                                : ''
+                        }
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="verb-tree-column">
+                    <div class="verb-tree-branch-line"></div>
+
+                    <div class="verb-tree-category">
+                        ${escapeHtml(meta.label)}
+                    </div>
+
+                    <div class="verb-tree-memory">
+                        ${escapeHtml(meta.memory)}
+                    </div>
+
+                    <div class="verb-tree-column-line"></div>
+
+                    <div class="verb-tree-nodes">
+                        ${nodesHTML}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        return `
+            <div class="verb-root">
+                <div class="verb-root-word">
+                    ${escapeHtml(dictionaryForm)}
+                </div>
+                <div class="verb-root-dot"></div>
+                <div class="verb-root-line"></div>
+            </div>
+
+            <div class="verb-tree-branches">
+                ${columnsHTML}
+            </div>
+        `;
+    }
+
+    function renderActiveContinuation(
+        firstNode,
+        paths,
+        finalSurface
+    ) {
+        const matchingPaths = paths.filter(path => {
+            if (!path || !path.length) return false;
+
+            return (
+                path[0].functionName === firstNode.functionName &&
+                path[0].surface === firstNode.surface
+            );
+        });
+
+        if (!matchingPaths.length) return '';
+
+        const unique = new Map();
+
+        matchingPaths.forEach(path => {
+            const rest = path.slice(1);
+
+            if (!rest.length) return;
+
+            const key = rest
+                .map(n => `${n.functionName}:${n.surface}`)
+                .join('>');
+
+            if (!unique.has(key)) {
+                unique.set(key, rest);
+            }
+        });
+
+        const continuations = [...unique.values()];
+
+        if (!continuations.length) return '';
+
+        return `
+            <div class="verb-continuations">
+                ${continuations.map(path =>
+                    renderContinuationPath(path, finalSurface)
+                ).join('')}
+            </div>
+        `;
+    }
+
+
+    function renderContinuationPath(path, finalSurface) {
+        return `
+            <div class="verb-continuation-path">
+
+                ${path.map((node, index) => {
+                    const isFinal =
+                        node.surface === finalSurface ||
+                        index === path.length - 1;
+
+                    const memoryMeta =
+                        node.memoryCategory
+                            ? VERB_MEMORY_META[node.memoryCategory]
+                            : null;
 
                     return `
-                        <div class="verb-tree-column">
+                        <div class="verb-path-arrow">
+                            ↓
+                        </div>
 
-                            <div class="verb-tree-category">
-                                ${meta.label}
-                            </div>
-
-                            <div class="verb-tree-memory">
-                                ${meta.memory}
-                            </div>
-
-                            ${groups[category].map(node => {
-                                const active =
-                                    activeFunctions.has(
-                                        node.functionName +
-                                        '|' +
-                                        node.surface
-                                    );
-
-                                const final =
-                                    node.surface ===
-                                    surfaceForm;
-
-                                return `
-                                    <div class="
-                                        verb-tree-node
-                                        ${active ? 'active' : ''}
-                                        ${final ? 'final' : ''}
-                                    ">
-                                        <div>${node.surface}</div>
-                                        <small>
-                                            ${node.functionName}
-                                        </small>
+                        ${
+                            memoryMeta
+                                ? `
+                                    <div class="verb-path-step-label">
+                                        ${escapeHtml(memoryMeta.label)}
+                                        <span>
+                                            ${escapeHtml(memoryMeta.memory)}
+                                        </span>
                                     </div>
-                                `;
-                            }).join('')}
+                                  `
+                                : ''
+                        }
 
+                        <div class="
+                            verb-path-node
+                            ${isFinal ? 'final' : ''}
+                        ">
+                            <div class="verb-path-surface">
+                                ${escapeHtml(node.surface)}
+                            </div>
+
+                            <div class="verb-path-function">
+                                ${escapeHtml(node.functionName)}
+                            </div>
+
+                            ${
+                                isFinal
+                                    ? `<div class="verb-final-mark">★ 当前形式</div>`
+                                    : ''
+                            }
                         </div>
                     `;
                 }).join('')}
+
             </div>
-
-            ${renderVerbPathDetails(paths, surfaceForm)}
         `;
-
-        document.getElementById(
-            'verb-tree-title'
-        ).textContent = dictionaryForm;
-
-        document.getElementById(
-            'verb-tree-subtitle'
-        ).textContent =
-            `${entry.reading || ''} · ${entry.verb_class}`;
-
-        document.getElementById(
-            'verb-tree-content'
-        ).innerHTML = html;
     }
 
     async function openVerbTree(
@@ -6517,10 +6880,37 @@ async function saveManualStudySession() {
                 'verb-tree-content'
             ).innerHTML = 'Loading...';
 
-            await renderVerbTree(
+            const entry =
+                await getVerbDictionaryEntry(
+                    dictionaryForm
+                );
+
+            if (!entry) {
+                throw new Error(
+                    `verb_dictionary 未登记 ${dictionaryForm}`
+                );
+            }
+
+            const paths =
+                await resolveVerbPaths(
+                    dictionaryForm,
+                    surfaceForm
+                );
+
+            document.getElementById(
+                'verb-tree-subtitle'
+            ).textContent =
+                `${entry.reading || ''} · ${entry.verb_class}`;
+
+            const treeHTML = await renderVerbTree(
                 dictionaryForm,
-                surfaceForm
+                surfaceForm,
+                entry,
+                paths
             );
+
+            document.getElementById('verb-tree-content').innerHTML =
+                treeHTML;
 
         } catch (e) {
             console.error(e);
