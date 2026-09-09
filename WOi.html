@@ -6985,7 +6985,27 @@ async function saveManualStudySession() {
     surfaceForm,
     verbClass
 ) {
-    const first =
+       /*
+ * 复合サ変的目标形式必须保留词干。
+ *
+ * 作成する → 作成した
+ * 準備する → 準備して
+ *
+ * 如果目标连「作成 / 準備」前缀都没有，
+ * 就不需要让复合サ変进入 BFS。
+ */
+if (
+    verbClass === 'suru' &&
+    dictionaryForm !== 'する' &&
+    dictionaryForm.endsWith('する')
+) {
+    const suruPrefix = dictionaryForm.slice(0, -2);
+
+    if (!surfaceForm.startsWith(suruPrefix)) {
+        return [];
+    }
+} 
+        const first =
         await generateVerbFirstLevel(
             dictionaryForm,
             verbClass
@@ -7074,15 +7094,72 @@ async function saveManualStudySession() {
             await generateNextVerbStates(state);
 
         for (const next of nextStates) {
-            queue.push({
-                ...next,
 
-                path: [
-                    ...state.path,
-                    next
-                ]
-            });
-        }
+    /*
+     * 目标导向剪枝：
+     *
+     * 只有当前生成形式仍可能继续变成目标时，
+     * 才允许进入 BFS。
+     *
+     * 例如目标是：
+     * 作成した
+     *
+     * 保留：
+     * 作成して
+     * 作成した
+     *
+     * 大量无关的：
+     * 作成されている...
+     * 作成させている...
+     * 不再无限展开。
+     */
+    const targetRelated =
+        surfaceForm.startsWith(next.surface) ||
+        next.surface.startsWith(surfaceForm) ||
+        next.surface === surfaceForm ||
+
+        /*
+         * ない / ます / 派生一段等形式，
+         * 后续会发生尾部替换，因此只要求
+         * 前部词干仍与目标一致。
+         */
+        (() => {
+            const commonLength =
+                Math.min(
+                    next.surface.length,
+                    surfaceForm.length
+                );
+
+            let same = 0;
+
+            while (
+                same < commonLength &&
+                next.surface[same] ===
+                    surfaceForm[same]
+            ) {
+                same++;
+            }
+
+            return same >=
+                Math.min(
+                    2,
+                    commonLength
+                );
+        })();
+
+    if (!targetRelated) {
+        continue;
+    }
+
+    queue.push({
+        ...next,
+
+        path: [
+            ...state.path,
+            next
+        ]
+    });
+}
     }
 
     return results;
