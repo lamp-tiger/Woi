@@ -6777,6 +6777,43 @@ async function saveManualStudySession() {
         return generateIchidanFirstLevel(surface);
     }
 
+    async function generateConnectorDerivedIchidanNext(state) {
+        const prefix =
+            state.connectorPrefix || '';
+
+        if (
+            !state.surface ||
+            !state.surface.startsWith(prefix)
+        ) {
+            return [];
+        }
+
+        const localSurface =
+            state.surface.slice(prefix.length);
+
+        const children =
+            await generateDerivedIchidanNext(
+                localSurface
+            );
+
+        return children.map(node => ({
+            ...node,
+
+            surface:
+                prefix +
+                node.surface,
+
+            connectorPrefix:
+                prefix,
+
+            connectorDictionaryForm:
+                state.connectorDictionaryForm,
+
+            connectorVerbClass:
+                state.connectorVerbClass
+        }));
+    }
+
     function getTeConnectorBase(teSurface) {
         if (!teSurface) return null;
 
@@ -6915,6 +6952,13 @@ async function saveManualStudySession() {
          * 書かれる
          */
         if (state.outputClass === 'ichidan-derived') {
+
+            if (state.connectorDictionaryForm) {
+                return generateConnectorDerivedIchidanNext(
+                    state
+                );
+            }
+
             return generateDerivedIchidanNext(
                 state.surface
             );
