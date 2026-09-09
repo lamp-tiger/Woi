@@ -7032,7 +7032,35 @@ if (
      */
     let foundDepth = null;
 
+    const MAX_VISITED_STATES = 1500;
+    const MAX_SEARCH_MS = 800;
+    
+    const searchStartedAt = performance.now();
+    let processedStates = 0;
     while (queue.length) {
+
+        processedStates++;
+    
+        if (
+            processedStates > MAX_VISITED_STATES ||
+            performance.now() - searchStartedAt > MAX_SEARCH_MS
+        ) {
+            console.warn(
+                '[VerbEngine] search aborted:',
+                {
+                    dictionaryForm,
+                    surfaceForm,
+                    processedStates,
+                    elapsed:
+                        Math.round(
+                            performance.now() -
+                            searchStartedAt
+                        ) + 'ms'
+                }
+            );
+    
+            return [];
+        }
         const state = queue.shift();
         const depth = state.path.length;
 
