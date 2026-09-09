@@ -6946,112 +6946,65 @@ async function saveManualStudySession() {
 
 
     async function findVerbPaths(
-    dictionaryForm,
-    surfaceForm,
-    verbClass
-) {
-    const first =
-        await generateVerbFirstLevel(
-            dictionaryForm,
-            verbClass
-        );
+        dictionaryForm,
+        surfaceForm,
+        verbClass
+    ) {
+        const first =
+            await generateVerbFirstLevel(
+                dictionaryForm,
+                verbClass
+            );
 
-    const queue = first.map(node => ({
-        ...node,
-        path: [node]
-    }));
+        const queue = first.map(node => ({
+            ...node,
+            path: [node]
+        }));
 
-    const results = [];
-    const visited = new Set();
+        const results = [];
+        const visited = new Set();
 
-    /*
-     * BFS 找到目标以后，
-     * 只继续检查“同一深度”的其他路径。
-     *
-     * 这样：
-     * 食べられる
-     * 仍然可以同时保留 passive / potential
-     *
-     * 但不会继续把整棵无限组合树全部生成。
-     */
-    let foundDepth = null;
+        while (queue.length) {
+            const state = queue.shift();
 
-    while (queue.length) {
-        const state = queue.shift();
-        const depth = state.path.length;
+            const key =
+                state.surface +
+                '|' +
+                state.outputClass +
+                '|' +
+                state.path
+                    .map(x => x.functionName)
+                    .join('>');
 
-        /*
-         * 已经找到最短路径以后，
-         * 更深的路径不再搜索。
-         */
-        if (
-            foundDepth !== null &&
-            depth > foundDepth
-        ) {
-            break;
-        }
+            if (visited.has(key)) continue;
 
-        const key =
-            state.surface +
-            '|' +
-            state.outputClass +
-            '|' +
-            state.path
-                .map(x => x.functionName)
-                .join('>');
+            visited.add(key);
 
-        if (visited.has(key)) {
-            continue;
-        }
-
-        visited.add(key);
-
-        /*
-         * 找到目标
-         */
-        if (state.surface === surfaceForm) {
-            results.push(state.path);
-
-            if (foundDepth === null) {
-                foundDepth = depth;
+            if (state.surface === surfaceForm) {
+                results.push(state.path);
+                continue;
             }
 
-            /*
-             * 找到了就不要继续从这个节点往下展开。
-             */
-            continue;
+            if (state.path.length >= 8) {
+                continue;
+            }
+
+            const nextStates =
+                await generateNextVerbStates(state);
+
+            for (const next of nextStates) {
+                queue.push({
+                    ...next,
+                    path: [
+                        ...state.path,
+                        next
+                    ]
+                });
+            }
         }
 
-        /*
-         * 已经找到答案以后，
-         * 当前同层节点只负责检查是否也是答案，
-         * 不再生成下一层。
-         */
-        if (foundDepth !== null) {
-            continue;
-        }
-
-        if (depth >= 8) {
-            continue;
-        }
-
-        const nextStates =
-            await generateNextVerbStates(state);
-
-        for (const next of nextStates) {
-            queue.push({
-                ...next,
-
-                path: [
-                    ...state.path,
-                    next
-                ]
-            });
-        }
+        return results;
     }
-
-    return results;
-}
 
     async function getCachedVerbPaths(
         dictionaryForm,
@@ -7216,6 +7169,23 @@ async function saveManualStudySession() {
     }
 
 
+    function getConnectorDisplaySurface(node) {
+        if (!node) return '';
+
+        const prefix = node.connectorPrefix || '';
+
+        if (
+            prefix &&
+            node.surface &&
+            node.surface.startsWith(prefix)
+        ) {
+            return node.surface.slice(prefix.length);
+        }
+
+        return node.surface || '';
+    }
+
+
     async function getDisplaySiblings(parentNode, actualNode) {
         /*
          * ない节点：
@@ -7266,6 +7236,27 @@ async function saveManualStudySession() {
             return [actualNode];
         }
 
+        /*
+         * connector 第二动词：
+         *
+         * 読んで + くれる
+         * ↓
+         * くれる重新进入自己的六类系统
+         */
+        if (parentNode.outputClass === 'connector-verb') {
+            const children =
+                await generateConnectorVerbNext(parentNode);
+
+            if (actualNode.memoryCategory) {
+                return children.filter(node =>
+                    node.memoryCategory ===
+                    actualNode.memoryCategory
+                );
+            }
+
+            return [actualNode];
+        }
+
         return [actualNode];
     }
 
@@ -7288,9 +7279,25 @@ async function saveManualStudySession() {
                 actualNode
             );
 
+        /*
+         * connector 本身不是六大类之一。
+         *
+         * 例如：
+         * 読んで
+         * ↓
+         * ＋くれる
+         * ↓
+         * くれる
+         */
+        const isConnector =
+            actualNode.outputClass === 'connector-verb' ||
+            actualNode.functionName?.startsWith('connector-');
+
         const memoryMeta =
             actualNode.memoryCategory
-                ? VERB_MEMORY_META[actualNode.memoryCategory]
+                ? VERB_MEMORY_META[
+                    actualNode.memoryCategory
+                  ]
                 : null;
 
         const nextHTML =
@@ -7299,6 +7306,69 @@ async function saveManualStudySession() {
                 index + 1,
                 finalSurface
             );
+
+        /*
+         * connector 单独显示，
+         * 不把它伪装成 A/I/U/E/O。
+         */
+        if (isConnector) {
+            const connectorName =
+                actualNode.connectorDictionaryForm ||
+                getConnectorDisplaySurface(actualNode);
+
+            const isFinal =
+                actualNode.surface === finalSurface;
+
+            return `
+                <div class="verb-path-level">
+
+                    <div class="verb-path-arrow">
+                        ↓
+                    </div>
+
+                    <div class="verb-path-step-label">
+                        ＋${escapeHtml(connectorName)}
+                    </div>
+
+                    <div class="verb-path-siblings">
+
+                        <div class="
+                            verb-path-choice
+                            active
+                            ${isFinal ? 'final' : ''}
+                        ">
+
+                            <div class="verb-path-surface">
+                                ${escapeHtml(
+                                    getConnectorDisplaySurface(
+                                        actualNode
+                                    )
+                                )}
+                            </div>
+
+                            <div class="verb-path-function">
+                                connector
+                            </div>
+
+                            ${
+                                isFinal
+                                    ? `
+                                        <div class="verb-final-mark">
+                                            ★ 当前形式
+                                        </div>
+                                      `
+                                    : ''
+                            }
+
+                        </div>
+
+                    </div>
+
+                    ${nextHTML}
+
+                </div>
+            `;
+        }
 
         return `
             <div class="verb-path-level">
@@ -7321,13 +7391,20 @@ async function saveManualStudySession() {
                 }
 
                 <div class="verb-path-siblings">
+
                     ${siblings.map(node => {
+
                         const isActive =
-                            node.functionName === actualNode.functionName &&
-                            node.surface === actualNode.surface;
+                            node.functionName ===
+                                actualNode.functionName &&
+                            node.surface ===
+                                actualNode.surface;
 
                         const isFinal =
                             node.surface === finalSurface;
+
+                        const displaySurface =
+                            getConnectorDisplaySurface(node);
 
                         return `
                             <div class="
@@ -7335,12 +7412,17 @@ async function saveManualStudySession() {
                                 ${isActive ? 'active' : ''}
                                 ${isFinal ? 'final' : ''}
                             ">
+
                                 <div class="verb-path-surface">
-                                    ${escapeHtml(node.surface)}
+                                    ${escapeHtml(
+                                        displaySurface
+                                    )}
                                 </div>
 
                                 <div class="verb-path-function">
-                                    ${escapeHtml(node.functionName)}
+                                    ${escapeHtml(
+                                        node.functionName
+                                    )}
                                 </div>
 
                                 ${
@@ -7352,9 +7434,11 @@ async function saveManualStudySession() {
                                           `
                                         : ''
                                 }
+
                             </div>
                         `;
                     }).join('')}
+
                 </div>
 
                 ${nextHTML}
