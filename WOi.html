@@ -7126,6 +7126,70 @@ let foundDepth = null;
     
             break;
         }
+        /*
+         * Best-first:
+         * 每一轮都优先处理与目标 surface
+         * 共同前缀最长的状态。
+         *
+         * 注意：
+         * 这里只改变搜索顺序，
+         * 不改变任何合法变形规则。
+         */
+        queue.sort((a, b) => {
+
+            const getScore = state => {
+
+                const candidate =
+                    state.surface || '';
+
+                const commonLength =
+                    Math.min(
+                        candidate.length,
+                        surfaceForm.length
+                    );
+
+                let same = 0;
+
+                while (
+                    same < commonLength &&
+                    candidate[same] ===
+                        surfaceForm[same]
+                ) {
+                    same++;
+                }
+
+                let score = same;
+
+                /*
+                 * 当前状态本身就是目标前缀，
+                 * 给予很高优先级。
+                 */
+                if (
+                    surfaceForm.startsWith(
+                        candidate
+                    )
+                ) {
+                    score += 10000;
+                }
+
+                /*
+                 * 完全命中最高。
+                 */
+                if (
+                    candidate === surfaceForm
+                ) {
+                    score += 20000;
+                }
+
+                return score;
+            };
+
+            return (
+                getScore(b) -
+                getScore(a)
+            );
+        });
+
         const state = queue.shift();
         const depth = state.path.length;
 
