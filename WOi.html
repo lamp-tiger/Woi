@@ -7815,8 +7815,48 @@ async function saveManualStudySession() {
             return escapeHtml(text);
         }
 
+        const rawText = String(text || '');
+
+        // 建立：
+        // 带振假名原文 → 去掉振假名后的纯文本
+        // 同时记录纯文本每个字符对应原文的位置
+        function buildPlainTextMap(raw) {
+            let plain = '';
+            const map = [];
+
+            let i = 0;
+
+            while (i < raw.length) {
+                // 跳过 （かな）
+                if (raw[i] === '（') {
+                    const close = raw.indexOf('）', i + 1);
+
+                    if (close !== -1) {
+                        const inside = raw.slice(i + 1, close);
+
+                        if (/^[ぁ-んァ-ヶー\s]+$/.test(inside)) {
+                            i = close + 1;
+                            continue;
+                        }
+                    }
+                }
+
+                map.push(i);
+                plain += raw[i];
+                i++;
+            }
+
+            return {
+                plain,
+                map
+            };
+        }
+
+        const { plain, map } = buildPlainTextMap(rawText);
+
         const verbs = [...verbData]
             .filter(v =>
+                v &&
                 v.surface_form &&
                 v.dictionary_form
             )
@@ -7826,30 +7866,173 @@ async function saveManualStudySession() {
                     a.surface_form.length
             );
 
-        let result = escapeHtml(text);
+        const matches = [];
 
         for (const verb of verbs) {
-            const surface =
-                escapeHtml(verb.surface_form);
+            const surface = String(
+                verb.surface_form
+            ).trim();
 
-            const dictionary =
-                escapeHtml(verb.dictionary_form);
+            if (!surface) continue;
 
-            result = result.replace(
-                surface,
-                `<span
-                    class="ja-verb-click"
-                    onclick="
-                        event.stopPropagation();
-                        openVerbTree(
-                            '${dictionary}',
-                            '${surface}'
+            let searchFrom = 0;
+
+            while (searchFrom < plain.length) {
+                const plainStart = plain.indexOf(
+                    surface,
+                    searchFrom
+                );
+
+                if (plainStart === -1) break;
+
+                const plainEnd =
+                    plainStart + surface.length;
+
+                const rawStart = map[plainStart];
+
+                if (rawStart === undefined) break;
+
+                let rawEnd;
+
+                if (plainEnd < map.length) {
+                    rawEnd = map[plainEnd];
+                } else {
+                    rawEnd = rawText.length;
+                }
+
+                /*
+                 * 如果最后一个汉字后紧跟自己的振假名，
+                 * 把这个 （かな） 也包含进点击区域。
+                 */
+                if (rawEnd < rawText.length) {
+                    const possibleRubyStart = rawEnd;
+
+                    if (
+                        rawText[possibleRubyStart] === '（'
+                    ) {
+                        const close = rawText.indexOf(
+                            '）',
+                            possibleRubyStart + 1
                         );
-                    ">
-                    ${surface}
-                 </span>`
-            );
+
+                        if (close !== -1) {
+                            const inside = rawText.slice(
+                                possibleRubyStart + 1,
+                                close
+                            );
+
+                            if (
+                                /^[ぁ-んァ-ヶー\s]+$/.test(
+                                    inside
+                                )
+                            ) {
+                                rawEnd = close + 1;
+                            }
+                        }
+                    }
+                }
+
+                matches.push({
+                    rawStart,
+                    rawEnd,
+                    surface,
+                    dictionaryForm:
+                        String(
+                            verb.dictionary_form
+                        ).trim()
+                });
+
+                searchFrom = plainEnd;
+            }
         }
+
+        /*
+         * 长匹配优先。
+         * 如果两个动词区域重叠，只保留更长的那个。
+         */
+        matches.sort((a, b) => {
+            if (a.rawStart !== b.rawStart) {
+                return a.rawStart - b.rawStart;
+            }
+
+            return (
+                (b.rawEnd - b.rawStart) -
+                (a.rawEnd - a.rawStart)
+            );
+        });
+
+        const selected = [];
+
+        for (const match of matches) {
+            const overlaps = selected.some(existing =>
+                match.rawStart < existing.rawEnd &&
+                match.rawEnd > existing.rawStart
+            );
+
+            if (!overlaps) {
+                selected.push(match);
+            }
+        }
+
+        selected.sort(
+            (a, b) =>
+                a.rawStart - b.rawStart
+        );
+
+        if (!selected.length) {
+            return escapeHtml(rawText);
+        }
+
+        let result = '';
+        let cursor = 0;
+
+        for (const match of selected) {
+            result += escapeHtml(
+                rawText.slice(
+                    cursor,
+                    match.rawStart
+                )
+            );
+
+            const displayText = escapeHtml(
+                rawText.slice(
+                    match.rawStart,
+                    match.rawEnd
+                )
+            );
+
+            /*
+             * 用 JSON.stringify 生成 JS 字符串，
+             * 避免动词里出现引号时破坏 onclick。
+             */
+            const dictionaryArg =
+                JSON.stringify(
+                    match.dictionaryForm
+                );
+
+            const surfaceArg =
+                JSON.stringify(
+                    match.surface
+                );
+
+            result +=
+                `<span class="ja-verb-click"` +
+                ` onclick='` +
+                `event.stopPropagation();` +
+                `openVerbTree(` +
+                `${dictionaryArg},` +
+                `${surfaceArg}` +
+                `);` +
+                `'>` +
+                `${displayText}` +
+                `</span>`;
+
+            cursor = match.rawEnd;
+        }
+
+        result += escapeHtml(
+            rawText.slice(cursor)
+        );
 
         return result;
     }
