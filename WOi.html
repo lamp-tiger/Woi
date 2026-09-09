@@ -7888,43 +7888,38 @@ async function saveManualStudySession() {
     }
 
 
-    function normalizeImportedVerb(v) {
-        return {
-            surface_form: String(v.surface_form || '').trim(),
-            dictionary_form: String(v.dictionary_form || '').trim(),
-            reading: String(v.reading || '').trim(),
-            context: String(v.context || '').trim()
-        };
+function normalizeImportedVerb(v) {
+    return {
+        item: Number(v.item) || 0,
+        surface_form: String(v.surface_form || '').trim(),
+        dictionary_form: String(v.dictionary_form || '').trim(),
+        reading: String(v.reading || '').trim(),
+        source: String(v.source || '').trim().toLowerCase()
+    };
+}
+
+
+function attachVerbsToImportedWords(parsedWords, verbs) {
+    const normalized = verbs
+        .map(normalizeImportedVerb)
+        .filter(v =>
+            v.item >= 1 &&
+            v.surface_form &&
+            v.dictionary_form &&
+            (v.source === 'orig' || v.source === 'gen')
+        );
+
+    for (let i = 0; i < parsedWords.length; i++) {
+        const w = parsedWords[i];
+        const itemNumber = i + 1;
+
+        w.verbData = normalized.filter(v =>
+            v.item === itemNumber
+        );
     }
 
-
-    function attachVerbsToImportedWords(parsedWords, verbs) {
-        const normalized = verbs
-            .map(normalizeImportedVerb)
-            .filter(v =>
-                v.surface_form &&
-                v.dictionary_form
-            );
-
-        for (const w of parsedWords) {
-            const contexts = [
-                w.origJP || '',
-                w.genJP || ''
-            ];
-
-            w.verbData = normalized.filter(v => {
-                return contexts.some(sentence =>
-                    sentence &&
-                    (
-                        sentence.includes(v.surface_form) ||
-                        sentence === v.context
-                    )
-                );
-            });
-        }
-
-        return parsedWords;
-    }
+    return parsedWords;
+}
 
 
     function parseAIImportWords(text) {
