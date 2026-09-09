@@ -6097,7 +6097,7 @@ async function saveManualStudySession() {
         session.queue = [...news, ...revs, ...rels];
     }
 
-    const VERB_ENGINE_VERSION = 1;
+    const VERB_ENGINE_VERSION = 2;
 
     const VERB_MEMORY_ORDER = [
         'sound_change',
@@ -6344,6 +6344,37 @@ async function saveManualStudySession() {
         te: '来て',
         past: '来た'
     };
+
+    const TE_CONNECTOR_VERBS = [
+        {
+            dictionaryForm: 'いる',
+            verbClass: 'ichidan'
+        },
+        {
+            dictionaryForm: 'みる',
+            verbClass: 'ichidan'
+        },
+        {
+            dictionaryForm: 'おく',
+            verbClass: 'godan-ku'
+        },
+        {
+            dictionaryForm: 'しまう',
+            verbClass: 'godan-u'
+        },
+        {
+            dictionaryForm: 'くれる',
+            verbClass: 'ichidan'
+        },
+        {
+            dictionaryForm: 'もらう',
+            verbClass: 'godan-u'
+        },
+        {
+            dictionaryForm: 'あげる',
+            verbClass: 'ichidan'
+        }
+    ];
 
     async function getVerbDictionaryEntry(dictionaryForm) {
         const { data, error } = await sb
@@ -6635,6 +6666,24 @@ async function saveManualStudySession() {
         ];
     }
 
+    function generateConnectorNegativeNext(state) {
+        const children =
+            generateNegativeNext(state.surface);
+
+        return children.map(node => ({
+            ...node,
+
+            connectorPrefix:
+                state.connectorPrefix,
+
+            connectorDictionaryForm:
+                state.connectorDictionaryForm,
+
+            connectorVerbClass:
+                state.connectorVerbClass
+        }));
+    }
+
     function generatePoliteNext(surface) {
         if (!surface.endsWith('ます')) {
             return [];
@@ -6666,6 +6715,24 @@ async function saveManualStudySession() {
         ];
     }
 
+    function generateConnectorPoliteNext(state) {
+        const children =
+            generatePoliteNext(state.surface);
+
+        return children.map(node => ({
+            ...node,
+
+            connectorPrefix:
+                state.connectorPrefix,
+
+            connectorDictionaryForm:
+                state.connectorDictionaryForm,
+
+            connectorVerbClass:
+                state.connectorVerbClass
+        }));
+    }
+
     async function generateDerivedIchidanNext(surface) {
         if (!surface.endsWith('る')) {
             return [];
@@ -6674,26 +6741,205 @@ async function saveManualStudySession() {
         return generateIchidanFirstLevel(surface);
     }
 
-    async function generateNextVerbStates(state) {
+    function getTeConnectorBase(teSurface) {
+        if (!teSurface) return null;
+
         if (
-            state.outputClass === 'ichidan-derived'
+            teSurface.endsWith('て') ||
+            teSurface.endsWith('で')
         ) {
+            return teSurface;
+        }
+
+        return null;
+    }
+
+
+    async function generateTeConnectorNext(teSurface) {
+        const base = getTeConnectorBase(teSurface);
+
+        if (!base) return [];
+
+        return TE_CONNECTOR_VERBS.map(item => ({
+            functionName: `connector-${item.dictionaryForm}`,
+
+            memoryCategory: null,
+
+            surface:
+                base +
+                item.dictionaryForm,
+
+            outputClass: 'connector-verb',
+
+            connectorDictionaryForm:
+                item.dictionaryForm,
+
+            connectorVerbClass:
+                item.verbClass,
+
+            connectorPrefix:
+                base
+        }));
+    }
+
+
+    async function generateConnectorVerbNext(state) {
+        const dictionaryForm =
+            state.connectorDictionaryForm;
+
+        const verbClass =
+            state.connectorVerbClass;
+
+        const prefix =
+            state.connectorPrefix || '';
+
+        if (
+            !dictionaryForm ||
+            !verbClass
+        ) {
+            return [];
+        }
+
+        let children = [];
+
+        if (verbClass === 'ichidan') {
+            children =
+                await generateIchidanFirstLevel(
+                    dictionaryForm
+                );
+        }
+
+        else if (verbClass.startsWith('godan-')) {
+            children =
+                await generateGodanFirstLevel(
+                    dictionaryForm,
+                    verbClass
+                );
+        }
+
+        else if (verbClass === 'suru') {
+            children =
+                await generateIrregularFirstLevel(
+                    dictionaryForm,
+                    verbClass
+                );
+        }
+
+        else if (verbClass === 'kuru') {
+            children =
+                await generateIrregularFirstLevel(
+                    dictionaryForm,
+                    verbClass
+                );
+        }
+
+        /*
+         * 第二个动词生成出来以后，
+         * 把前面的 て/で 接回去。
+         *
+         * 例如：
+         *
+         * 食べて + いる
+         * → 食べている
+         *
+         * いる → いない
+         * → 食べていない
+         */
+
+        return children
+            .filter(node =>
+                node.functionName !== 'dictionary'
+            )
+            .map(node => ({
+                ...node,
+
+                surface:
+                    prefix +
+                    node.surface,
+
+                connectorPrefix:
+                    prefix,
+
+                connectorDictionaryForm:
+                    dictionaryForm,
+
+                connectorVerbClass:
+                    verbClass
+            }));
+    }
+
+    async function generateNextVerbStates(state) {
+        if (!state) return [];
+
+        /*
+         * 派生出来的一段型动词
+         *
+         * 書ける
+         * 書かせる
+         * 書かれる
+         */
+        if (state.outputClass === 'ichidan-derived') {
             return generateDerivedIchidanNext(
                 state.surface
             );
         }
 
+
+        /*
+         * ない系统
+         */
         if (state.outputClass === 'negative') {
+            if (state.connectorDictionaryForm) {
+                return generateConnectorNegativeNext(
+                    state
+                );
+            }
+
             return generateNegativeNext(
                 state.surface
             );
         }
 
+
+        /*
+         * ます系统
+         */
         if (state.outputClass === 'polite') {
+            if (state.connectorDictionaryForm) {
+                return generateConnectorPoliteNext(
+                    state
+                );
+            }
+
             return generatePoliteNext(
                 state.surface
             );
         }
+
+
+        /*
+         * NEW:
+         *
+         * て / で 后允许连接第二个动词
+         */
+        if (state.outputClass === 'te') {
+            return generateTeConnectorNext(
+                state.surface
+            );
+        }
+
+
+        /*
+         * NEW:
+         *
+         * 第二个动词重新进入 VERB engine
+         */
+        if (state.outputClass === 'connector-verb') {
+            return generateConnectorVerbNext(
+                state
+            );
+        }
+
 
         return [];
     }
@@ -6739,7 +6985,7 @@ async function saveManualStudySession() {
                 continue;
             }
 
-            if (state.path.length >= 5) {
+            if (state.path.length >= 8) {
                 continue;
             }
 
