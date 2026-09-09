@@ -6946,65 +6946,112 @@ async function saveManualStudySession() {
 
 
     async function findVerbPaths(
-        dictionaryForm,
-        surfaceForm,
-        verbClass
-    ) {
-        const first =
-            await generateVerbFirstLevel(
-                dictionaryForm,
-                verbClass
-            );
+    dictionaryForm,
+    surfaceForm,
+    verbClass
+) {
+    const first =
+        await generateVerbFirstLevel(
+            dictionaryForm,
+            verbClass
+        );
 
-        const queue = first.map(node => ({
-            ...node,
-            path: [node]
-        }));
+    const queue = first.map(node => ({
+        ...node,
+        path: [node]
+    }));
 
-        const results = [];
-        const visited = new Set();
+    const results = [];
+    const visited = new Set();
 
-        while (queue.length) {
-            const state = queue.shift();
+    /*
+     * BFS 找到目标以后，
+     * 只继续检查“同一深度”的其他路径。
+     *
+     * 这样：
+     * 食べられる
+     * 仍然可以同时保留 passive / potential
+     *
+     * 但不会继续把整棵无限组合树全部生成。
+     */
+    let foundDepth = null;
 
-            const key =
-                state.surface +
-                '|' +
-                state.outputClass +
-                '|' +
-                state.path
-                    .map(x => x.functionName)
-                    .join('>');
+    while (queue.length) {
+        const state = queue.shift();
+        const depth = state.path.length;
 
-            if (visited.has(key)) continue;
-
-            visited.add(key);
-
-            if (state.surface === surfaceForm) {
-                results.push(state.path);
-                continue;
-            }
-
-            if (state.path.length >= 8) {
-                continue;
-            }
-
-            const nextStates =
-                await generateNextVerbStates(state);
-
-            for (const next of nextStates) {
-                queue.push({
-                    ...next,
-                    path: [
-                        ...state.path,
-                        next
-                    ]
-                });
-            }
+        /*
+         * 已经找到最短路径以后，
+         * 更深的路径不再搜索。
+         */
+        if (
+            foundDepth !== null &&
+            depth > foundDepth
+        ) {
+            break;
         }
 
-        return results;
+        const key =
+            state.surface +
+            '|' +
+            state.outputClass +
+            '|' +
+            state.path
+                .map(x => x.functionName)
+                .join('>');
+
+        if (visited.has(key)) {
+            continue;
+        }
+
+        visited.add(key);
+
+        /*
+         * 找到目标
+         */
+        if (state.surface === surfaceForm) {
+            results.push(state.path);
+
+            if (foundDepth === null) {
+                foundDepth = depth;
+            }
+
+            /*
+             * 找到了就不要继续从这个节点往下展开。
+             */
+            continue;
+        }
+
+        /*
+         * 已经找到答案以后，
+         * 当前同层节点只负责检查是否也是答案，
+         * 不再生成下一层。
+         */
+        if (foundDepth !== null) {
+            continue;
+        }
+
+        if (depth >= 8) {
+            continue;
+        }
+
+        const nextStates =
+            await generateNextVerbStates(state);
+
+        for (const next of nextStates) {
+            queue.push({
+                ...next,
+
+                path: [
+                    ...state.path,
+                    next
+                ]
+            });
+        }
     }
+
+    return results;
+}
 
     async function getCachedVerbPaths(
         dictionaryForm,
