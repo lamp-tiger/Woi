@@ -8787,6 +8787,8 @@ function attachVerbsToImportedWords(parsedWords, verbs) {
         for (
             const w of words.filter(x => !x.deleted)
         ) {
+
+            // 原句
             if (
                 w.origJP &&
                 w.origJP.trim()
@@ -8795,19 +8797,17 @@ function attachVerbsToImportedWords(parsedWords, verbs) {
                     text: w.origJP.trim(),
                     trans: (w.origCN || '').trim(),
                     word: w.word || '',
+
                     verbData:
                         Array.isArray(w.verbData)
                             ? w.verbData.filter(v =>
-                                !v.context ||
-                                v.context === w.origJP ||
-                                w.origJP.includes(
-                                    v.surface_form
-                                )
+                                v.source === 'orig'
                             )
                             : []
                 });
             }
 
+            // 例句
             if (
                 w.genJP &&
                 w.genJP.trim()
@@ -8816,14 +8816,11 @@ function attachVerbsToImportedWords(parsedWords, verbs) {
                     text: w.genJP.trim(),
                     trans: (w.genCN || '').trim(),
                     word: w.word || '',
+
                     verbData:
                         Array.isArray(w.verbData)
                             ? w.verbData.filter(v =>
-                                !v.context ||
-                                v.context === w.genJP ||
-                                w.genJP.includes(
-                                    v.surface_form
-                                )
+                                v.source === 'gen'
                             )
                             : []
                 });
