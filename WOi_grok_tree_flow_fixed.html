@@ -7396,6 +7396,13 @@ async function saveManualStudySession() {
                 memoryCategory: null,
                 surface: base + 'なければ',
                 outputClass: 'terminal'
+            },
+
+            {
+                functionName: 'negative-colloquial-conditional',
+                memoryCategory: null,
+                surface: base + 'なきゃ',
+                outputClass: 'terminal'
             }
         ];
     }
@@ -8892,8 +8899,7 @@ return results;
         const activeFirst = activePath[0] || null;
 
         const activeCategory =
-            activeFirst?.memoryCategory ||
-            VERB_MEMORY_ORDER[0];
+            activeFirst?.memoryCategory || null;
 
         const grouped = {};
 
@@ -8910,10 +8916,13 @@ return results;
             }
         });
 
-        const startIndex = Math.max(
-            0,
-            VERB_MEMORY_ORDER.indexOf(activeCategory)
-        );
+        const startIndex =
+            activeCategory
+                ? Math.max(
+                    0,
+                    VERB_MEMORY_ORDER.indexOf(activeCategory)
+                )
+                : 0;
 
         const rotated = [];
 
@@ -8943,7 +8952,7 @@ return results;
                     <div class="
                         verb-u-category
                         ${slotClasses[index]}
-                        ${index === 0 ? 'path-lit' : ''}
+                        ${activeCategory && index === 0 ? 'path-lit' : ''}
                     ">
                         ${escapeHtml(meta.label)}
 
