@@ -2022,10 +2022,10 @@
 /* Verb Tree U Layout */
 
 .verb-tree-dialog {
-    width: min(430px, 94vw);
-    max-height: 90vh;
+    width: min(500px, 94vw);
+    max-height: 96vh;
     overflow-y: auto;
-    padding: 18px 8px 24px;
+    padding: 18px 12px 32px;
 }
 
 .verb-tree-header {
@@ -2058,15 +2058,16 @@
 .verb-u-stage {
     position: relative;
     width: 390px;
-    height: 142px;
+    height: var(--verb-tree-stage-height, 320px);
     margin: auto;
 }
 
 .verb-u-arc {
     position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+    left: 0;
+    top: 0;
+    width: 390px;
+    height: 142px;
 }
 
 .verb-u-arc path {
