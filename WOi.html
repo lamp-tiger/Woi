@@ -1738,6 +1738,587 @@
         font-size: 25px;
     }
 }
+    
+
+/* ============================================================
+   Verb Tree V3 — rotating U memory rail
+   当前主线 = U 型最低切点；逆时针顺序固定：音便 A I U E O
+============================================================ */
+.verb-tree-dialog {
+    position: relative;
+    width: min(760px, 94vw);
+    padding: 12px 18px 34px;
+}
+
+.verb-tree-head {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    z-index: 8;
+    margin: 0;
+}
+
+.verb-tree-head > div {
+    display: none;
+}
+
+.verb-tree-close {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    line-height: 32px;
+    color: #7d8797;
+}
+
+.verb-u-layout {
+    position: relative;
+    width: min(680px, 100%);
+    min-height: 430px;
+    margin: 0 auto;
+    padding-top: 4px;
+    box-sizing: border-box;
+}
+
+.verb-root-in-u {
+    position: relative;
+    z-index: 4;
+    margin: 0;
+    min-height: 58px;
+}
+
+.verb-root-word {
+    font-size: 28px;
+    line-height: 1.15;
+}
+
+.verb-root-class {
+    margin-top: 3px;
+    font-size: 10px;
+    line-height: 1.2;
+    color: #8a94a3;
+}
+
+.verb-u-rail {
+    position: absolute;
+    z-index: 0;
+    top: 50px;
+    left: 6%;
+    width: 88%;
+    height: 230px;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.verb-u-rail path {
+    fill: none;
+    stroke: rgba(var(--woi-static-rgb), 0.34);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.verb-ring-category,
+.verb-active-bottom {
+    z-index: 2;
+    text-align: center;
+}
+
+.verb-ring-category {
+    position: absolute;
+    width: 112px;
+    transform: translate(-50%, -50%);
+    opacity: .72;
+}
+
+.verb-ring-category.slot-right-low { left: 72%; top: 226px; }
+.verb-ring-category.slot-right-mid { left: 84%; top: 166px; }
+.verb-ring-category.slot-right-high { left: 88%; top: 92px; }
+.verb-ring-category.slot-left-high  { left: 12%; top: 92px; }
+.verb-ring-category.slot-left-low   { left: 22%; top: 192px; }
+
+.verb-ring-category .verb-tree-category {
+    font-size: 14px;
+    line-height: 1.15;
+}
+
+.verb-ring-category .verb-tree-memory {
+    min-height: 0;
+    margin-top: 1px;
+    font-size: 8px;
+    line-height: 1.1;
+}
+
+.verb-ring-category .verb-tree-nodes {
+    flex-direction: column;
+    gap: 0;
+    margin-top: 2px;
+}
+
+.verb-ring-category .verb-tree-node {
+    width: 100%;
+    padding: 1px 2px;
+    border: 0;
+    background: rgba(255,255,255,.78);
+}
+
+.verb-ring-category .verb-tree-surface {
+    font-size: 9px;
+}
+
+.verb-ring-category .verb-tree-function {
+    display: none;
+}
+
+.verb-active-bottom {
+    position: relative;
+    width: min(250px, 58vw);
+    margin: 214px auto 0;
+}
+
+.verb-active-bottom > .verb-tree-category {
+    position: relative;
+    z-index: 3;
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: white;
+    font-size: 18px;
+    color: var(--woi-static);
+}
+
+.verb-active-bottom > .verb-tree-memory {
+    min-height: 0;
+    margin-top: 1px;
+    font-size: 10px;
+}
+
+.verb-active-stem {
+    width: 2px;
+    height: 14px;
+    margin: 4px auto 0;
+    background: rgba(var(--woi-dynamic-rgb), .5);
+}
+
+.verb-active-first-nodes {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.verb-active-node-wrap {
+    width: 100%;
+}
+
+.verb-active-node-wrap > .verb-tree-node {
+    width: max-content;
+    min-width: 86px;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 7px 10px;
+}
+
+.verb-active-node-wrap .verb-active-extension {
+    margin-top: 5px;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.verb-extension-from {
+    display: none;
+}
+
+@media (max-width: 700px) {
+    .verb-tree-overlay {
+        padding: 4px;
+        align-items: flex-start;
+    }
+
+    .verb-tree-dialog {
+        width: 100%;
+        max-height: 96vh;
+        margin-top: 2vh;
+        padding: 8px 6px 24px;
+        border-radius: 13px;
+    }
+
+    .verb-u-layout {
+        width: 100%;
+        min-height: 390px;
+        padding-top: 0;
+    }
+
+    .verb-root-word {
+        font-size: 23px;
+    }
+
+    .verb-root-class {
+        font-size: 9px;
+    }
+
+    .verb-u-rail {
+        top: 43px;
+        left: 3%;
+        width: 94%;
+        height: 205px;
+    }
+
+    .verb-ring-category {
+        width: 72px;
+    }
+
+    .verb-ring-category.slot-right-low { left: 72%; top: 201px; }
+    .verb-ring-category.slot-right-mid { left: 86%; top: 146px; }
+    .verb-ring-category.slot-right-high { left: 89%; top: 78px; }
+    .verb-ring-category.slot-left-high  { left: 11%; top: 78px; }
+    .verb-ring-category.slot-left-low   { left: 24%; top: 174px; }
+
+    .verb-ring-category .verb-tree-category {
+        font-size: 12px;
+    }
+
+    .verb-ring-category .verb-tree-memory {
+        font-size: 7px;
+    }
+
+    .verb-ring-category .verb-tree-surface {
+        font-size: 8px;
+    }
+
+    .verb-active-bottom {
+        width: min(210px, 64vw);
+        margin-top: 188px;
+    }
+
+    .verb-active-bottom > .verb-tree-category {
+        font-size: 16px;
+        padding: 2px 8px;
+    }
+
+    .verb-active-bottom > .verb-tree-memory {
+        font-size: 9px;
+    }
+
+    .verb-active-node-wrap > .verb-tree-node {
+        min-width: 76px;
+        padding: 6px 8px;
+    }
+
+    .verb-path-arrow {
+        height: 18px;
+        line-height: 18px;
+        font-size: 14px;
+    }
+
+    .verb-path-step-label {
+        margin-bottom: 3px;
+        font-size: 9px;
+    }
+
+    .verb-path-choice {
+        padding: 5px 5px;
+    }
+}
+
+/* Verb Tree U Layout */
+
+.verb-tree-dialog {
+    width: min(430px, 94vw);
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 18px 8px 24px;
+}
+
+.verb-tree-header {
+    position: relative;
+    min-height: 24px;
+}
+
+#verb-tree-title,
+#verb-tree-subtitle {
+    display: none;
+}
+
+.verb-tree-content {
+    overflow: visible;
+}
+
+.verb-u-viewport {
+    width: 390px;
+    max-width: 100%;
+    margin: auto;
+    overflow: visible;
+}
+
+.verb-u-scale {
+    position: relative;
+    width: 390px;
+    overflow: visible;
+}
+
+.verb-u-stage {
+    position: relative;
+    width: 390px;
+    height: 142px;
+    margin: auto;
+}
+
+.verb-u-arc {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.verb-u-arc path {
+    fill: none;
+    stroke: #cbd2e2;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.verb-u-root {
+    position: absolute;
+    left: 50%;
+    top: 38px;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 5;
+}
+
+.verb-u-root-word {
+    font-size: 23px;
+    font-weight: 750;
+    line-height: 1.05;
+    white-space: nowrap;
+}
+
+.verb-u-root-class {
+    margin-top: 3px;
+    font-size: 10px;
+    color: #8e95a6;
+    white-space: nowrap;
+}
+
+.verb-u-category {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    min-width: 36px;
+    height: 24px;
+    padding: 0 6px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    background: #f8f9fd;
+    border: 1px solid #cbd2e2;
+    border-radius: 10px;
+
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 11px;
+
+    z-index: 4;
+}
+
+.verb-u-category.main {
+    left: 151px;
+    top: 113px;
+
+    min-width: 62px;
+    height: 32px;
+
+    border-radius: 13px;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.verb-u-category.slot-a {
+    left: 239px;
+    top: 113px;
+}
+
+.verb-u-category.slot-i {
+    left: 266px;
+    top: 72px;
+}
+
+.verb-u-category.slot-u {
+    left: 267px;
+    top: 30px;
+}
+
+.verb-u-category.slot-e {
+    left: 123px;
+    top: 30px;
+}
+
+.verb-u-category.slot-o {
+    left: 124px;
+    top: 72px;
+}
+
+.verb-u-memory {
+    display: block;
+    font-size: 7px;
+    line-height: 8px;
+    font-weight: 400;
+    color: #8e95a6;
+}
+
+.verb-u-side-form {
+    position: absolute;
+    z-index: 7;
+
+    padding: 0 2px;
+
+    color: #596174;
+    font-size: 9px;
+    line-height: 13px;
+    white-space: nowrap;
+}
+
+.verb-u-group-line {
+    position: absolute;
+    z-index: 3;
+    background: #d5dbe8;
+}
+
+.verb-u-group-line.horizontal {
+    height: 1px;
+}
+
+.verb-u-group-line.vertical {
+    width: 1px;
+}
+
+.verb-path-cell {
+    box-sizing: border-box;
+
+    padding: 3px 7px 4px;
+
+    border: 1px solid;
+    border-radius: 8px;
+
+    color: #596174;
+
+    font-size: 9px;
+    font-weight: 400;
+    line-height: 12px;
+
+    text-align: center;
+    white-space: nowrap;
+}
+
+.verb-path-op {
+    display: block;
+
+    margin-top: 1px;
+
+    font-size: 7px;
+    line-height: 8px;
+    font-weight: 400;
+
+    color: #8e95a6;
+}
+
+.verb-prop-connective {
+    background: #FDEAB9;
+    border-color: #FDEAB9;
+}
+
+.verb-prop-verb {
+    background: #EDC7C5;
+    border-color: #EDC7C5;
+}
+
+.verb-prop-adjective {
+    background: #E1D3F1;
+    border-color: #E1D3F1;
+}
+
+.verb-prop-noun {
+    background: #BCD7EA;
+    border-color: #BCD7EA;
+}
+
+.verb-prop-terminal {
+    background: #A9ACB3;
+    border-color: #A9ACB3;
+    color: white;
+}
+
+.verb-path-cell.path-lit,
+.verb-u-category.main.path-lit {
+    outline: 2px solid rgba(255,252,245,.99);
+    outline-offset: 1px;
+
+    box-shadow:
+        0 0 0 3px rgba(255,252,245,.88),
+        0 0 10px 4px rgba(255,247,232,.86),
+        0 0 17px 6px rgba(255,243,221,.48);
+}
+
+.verb-path-chain {
+    position: absolute;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    z-index: 9;
+}
+
+.verb-path-line {
+    width: 1px;
+    height: 12px;
+    flex: 0 0 12px;
+
+    background: #d5dbe8;
+}
+
+.verb-tree-legend {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    margin: 8px 8px 0;
+
+    font-size: 8px;
+    color: #70788a;
+}
+
+.verb-tree-legend span {
+    padding: 2px 5px;
+
+    border: 1px solid;
+    border-radius: 6px;
+}
+
+@media (max-width: 380px) {
+    .verb-u-viewport {
+        width: 341px;
+    }
+
+    .verb-u-scale {
+        width: 390px;
+        transform: scale(0.874);
+        transform-origin: top left;
+    }
+}
+
+@media (max-width: 350px) {
+    .verb-u-viewport {
+        width: calc(100vw - 28px);
+    }
+
+    .verb-u-scale {
+        transform: scale(calc((100vw - 28px) / 390));
+        transform-origin: top left;
+    }
+}
     </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -3873,18 +4454,22 @@ async function startStudyTimer() {
 }
 
 
-// 停止
+// 停止：前端立即停止，后台异步写入 Supabase
 async function stopStudyTimer() {
     const session = activeStudySession;
     if (!session) return;
 
-    try {
-        const endTime = new Date();
-        const durationSeconds = Math.max(
-            0,
-            Math.round((endTime.getTime() - new Date(session.start_time).getTime()) / 1000)
-        );
+    const endTime = new Date();
+    const durationSeconds = Math.max(
+        0,
+        Math.round((endTime.getTime() - new Date(session.start_time).getTime()) / 1000)
+    );
 
+    // optimistic UI：点击后立刻恢复 ▶，不等待网络
+    activeStudySession = null;
+    renderStudyTimer();
+
+    try {
         const { error } = await sb
             .from('study_sessions')
             .update({
@@ -3896,15 +4481,13 @@ async function stopStudyTimer() {
             .eq('user_id', currentUser.id);
 
         if (error) throw error;
-
-        activeStudySession = null;
-        renderStudyTimer();
         await loadStudyHistory();
     } catch (e) {
         console.error('停止计时失败:', e);
-        activeStudySession = session;
-        renderStudyTimer();
+
+        // 以云端真实状态为准；若停止失败且云端仍在计时，会自动恢复
         await loadActiveStudySession();
+        renderStudyTimer();
         alert('Stop timer failed: ' + e.message);
         throw e;
     }
@@ -5991,6 +6574,62 @@ async function saveManualStudySession() {
         return html;
     }
 
+    function prefetchUpcomingLearningVerbs() {
+        if (currentLang !== 'ja' || !session || !Array.isArray(session.queue)) return;
+
+        const startIndex = session.currentIndex + 1;
+        const endIndex = Math.min(startIndex + 6, session.queue.length);
+        const tasks = [];
+
+        for (let i = startIndex; i < endIndex; i++) {
+            const word = session.queue[i];
+            if (!word || !Array.isArray(word.verbData)) continue;
+
+            for (const verb of word.verbData) {
+                if (!verb || !verb.dictionary_form || !verb.surface_form) continue;
+                tasks.push({
+                    dictionaryForm: verb.dictionary_form,
+                    surfaceForm: verb.surface_form
+                });
+            }
+        }
+
+        const uniqueTasks = [
+            ...new Map(
+                tasks.map(task => [
+                    `${task.dictionaryForm}::${task.surfaceForm}`,
+                    task
+                ])
+            ).values()
+        ];
+
+        if (!uniqueTasks.length) return;
+
+        const run = async () => {
+            for (const task of uniqueTasks) {
+                try {
+                    await resolveVerbPaths(
+                        task.dictionaryForm,
+                        task.surfaceForm
+                    );
+                } catch (error) {
+                    console.warn(
+                        '[LearningVerbPrefetch] failed:',
+                        task.dictionaryForm,
+                        task.surfaceForm,
+                        error
+                    );
+                }
+            }
+        };
+
+        if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => { run(); }, { timeout: 1500 });
+        } else {
+            setTimeout(() => { run(); }, 100);
+        }
+    }
+
     function renderQuiz() {
         const container = document.getElementById('quiz-card');
         if (session.currentIndex >= session.queue.length) {
@@ -6002,6 +6641,10 @@ async function saveManualStudySession() {
             return;
         }
         const word = session.queue[session.currentIndex];
+
+        // 与刷句子模式共用 verbPathMemoryCache：后台预计算 N+1 ~ N+6
+        prefetchUpcomingLearningVerbs();
+
         const isMobile = window.innerWidth <= 768;
         let html = `<div class="word-title">${word.word}</div>`;
 
@@ -7922,24 +8565,16 @@ return results;
                 activeFirstKeys.add(
                     `${path[0].functionName}::${path[0].surface}`
                 );
-
                 if (path[0].memoryCategory) {
-                    activeCategories.add(
-                        path[0].memoryCategory
-                    );
+                    activeCategories.add(path[0].memoryCategory);
                 }
             }
         });
 
         if (!activeCategories.size) {
             firstLevel.forEach(node => {
-                if (
-                    node.surface === finalSurface &&
-                    node.memoryCategory
-                ) {
-                    activeCategories.add(
-                        node.memoryCategory
-                    );
+                if (node.surface === finalSurface && node.memoryCategory) {
+                    activeCategories.add(node.memoryCategory);
                     activeFirstKeys.add(
                         `${node.functionName}::${node.surface}`
                     );
@@ -7948,112 +8583,124 @@ return results;
         }
 
         const grouped = {};
-
         VERB_MEMORY_ORDER.forEach(category => {
             grouped[category] = [];
         });
-
         firstLevel.forEach(node => {
-            if (
-                node.memoryCategory &&
-                grouped[node.memoryCategory]
-            ) {
+            if (node.memoryCategory && grouped[node.memoryCategory]) {
                 grouped[node.memoryCategory].push(node);
             }
         });
 
-        const columnParts = [];
+        // 当前主线永远旋转到 U 型最低切点。
+        // 从最低点沿逆时针永远保持：音便 → A → I → U → E → O。
+        let activeCategory = null;
+        for (const path of activePaths) {
+            if (path && path.length && path[0].memoryCategory) {
+                activeCategory = path[0].memoryCategory;
+                break;
+            }
+        }
+        if (!activeCategory) {
+            activeCategory = [...activeCategories][0] || VERB_MEMORY_ORDER[0];
+        }
 
-        for (const category of VERB_MEMORY_ORDER) {
-            const meta = VERB_MEMORY_META[category];
+        const activeIndex = VERB_MEMORY_ORDER.indexOf(activeCategory);
+        const rotatedOrder = Array.from(
+            { length: VERB_MEMORY_ORDER.length },
+            (_, offset) => VERB_MEMORY_ORDER[
+                (activeIndex + offset + VERB_MEMORY_ORDER.length) % VERB_MEMORY_ORDER.length
+            ]
+        );
+
+        function renderCategoryNodes(category, compact = false) {
             const nodes = grouped[category] || [];
-            const isActiveCategory =
-                activeCategories.has(category);
-
-            const nodesHTML = nodes.map(node => {
-                const key =
-                    `${node.functionName}::${node.surface}`;
-
+            return nodes.map(node => {
+                const key = `${node.functionName}::${node.surface}`;
                 const isActive = activeFirstKeys.has(key);
                 const isFinal = node.surface === finalSurface;
-
                 return `
-                    <div class="
-                        verb-tree-node
-                        ${isActive ? 'active' : ''}
-                        ${isFinal ? 'final' : ''}
-                    ">
-                        <div class="verb-tree-surface">
-                            ${escapeHtml(node.surface)}
-                        </div>
-
-                        <div class="verb-tree-function">
-                            ${escapeHtml(node.functionName)}
-                        </div>
+                    <div class="verb-tree-node ${isActive ? 'active' : ''} ${isFinal ? 'final' : ''}">
+                        <div class="verb-tree-surface">${escapeHtml(node.surface)}</div>
+                        <div class="verb-tree-function">${escapeHtml(node.functionName)}</div>
                     </div>
                 `;
             }).join('');
+        }
 
-            let extensionHTML = '';
+        // offset 1~5 对应：右下、右中、右上、左上、左下。
+        // 因而视觉上从最低点逆时针读取时，顺序永远不变。
+        const slotClassByOffset = {
+            1: 'slot-right-low',
+            2: 'slot-right-mid',
+            3: 'slot-right-high',
+            4: 'slot-left-high',
+            5: 'slot-left-low'
+        };
 
-            if (isActiveCategory) {
-                for (const node of nodes) {
-                    const key =
-                        `${node.functionName}::${node.surface}`;
-
-                    if (!activeFirstKeys.has(key)) {
-                        continue;
-                    }
-
-                    extensionHTML +=
-                        await renderActivePathExtension(
-                            node,
-                            activePaths,
-                            finalSurface
-                        );
-                }
-            }
-
-            columnParts.push(`
-                <div class="
-                    verb-tree-column
-                    ${isActiveCategory ? 'active-category' : 'compact-category'}
-                ">
-                    <div class="verb-tree-branch-line"></div>
-
-                    <div class="verb-tree-category">
-                        ${escapeHtml(meta.label)}
-                    </div>
-
-                    <div class="verb-tree-memory">
-                        ${escapeHtml(meta.memory)}
-                    </div>
-
-                    <div class="verb-tree-column-line"></div>
-
-                    <div class="verb-tree-nodes">
-                        ${nodesHTML}
-                    </div>
-
-                    ${extensionHTML}
+        const ringParts = [];
+        for (let offset = 1; offset < rotatedOrder.length; offset++) {
+            const category = rotatedOrder[offset];
+            const meta = VERB_MEMORY_META[category];
+            ringParts.push(`
+                <div class="verb-ring-category ${slotClassByOffset[offset]}">
+                    <div class="verb-tree-category">${escapeHtml(meta.label)}</div>
+                    <div class="verb-tree-memory">${escapeHtml(meta.memory)}</div>
+                    <div class="verb-tree-nodes">${renderCategoryNodes(category, true)}</div>
                 </div>
             `);
         }
 
-        return `
-            <div class="verb-root">
-                <div class="verb-root-word">
-                    ${escapeHtml(dictionaryForm)}
-                </div>
-                <div class="verb-root-dot"></div>
-                <div class="verb-root-line"></div>
-            </div>
+        const activeMeta = VERB_MEMORY_META[activeCategory];
+        const activeNodes = grouped[activeCategory] || [];
+        let activeNodesHTML = '';
 
-            <div
-                class="verb-tree-branches"
-                style="${buildVerbTreeGridStyle(activeCategories)}"
-            >
-                ${columnParts.join('')}
+        for (const node of activeNodes) {
+            const key = `${node.functionName}::${node.surface}`;
+            const isActive = activeFirstKeys.has(key);
+            const isFinal = node.surface === finalSurface;
+            let extensionHTML = '';
+
+            if (isActive) {
+                extensionHTML = await renderActivePathExtension(
+                    node,
+                    activePaths,
+                    finalSurface
+                );
+            }
+
+            activeNodesHTML += `
+                <div class="verb-active-node-wrap">
+                    <div class="verb-tree-node ${isActive ? 'active' : ''} ${isFinal ? 'final' : ''}">
+                        <div class="verb-tree-surface">${escapeHtml(node.surface)}</div>
+                        <div class="verb-tree-function">${escapeHtml(node.functionName)}</div>
+                    </div>
+                    ${extensionHTML}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="verb-u-layout">
+                <div class="verb-root verb-root-in-u">
+                    <div class="verb-root-word">${escapeHtml(dictionaryForm)}</div>
+                    <div class="verb-root-class">${escapeHtml(entry.verb_class || '')}</div>
+                </div>
+
+                <svg class="verb-u-rail" viewBox="0 0 600 250" preserveAspectRatio="none" aria-hidden="true">
+                    <path d="M70 30 C80 150 175 220 300 220 C425 220 520 150 530 30" />
+                </svg>
+
+                ${ringParts.join('')}
+
+                <div class="verb-active-bottom">
+                    <div class="verb-tree-category">${escapeHtml(activeMeta.label)}</div>
+                    <div class="verb-tree-memory">${escapeHtml(activeMeta.memory)}</div>
+                    <div class="verb-active-stem"></div>
+                    <div class="verb-tree-nodes verb-active-first-nodes">
+                        ${activeNodesHTML}
+                    </div>
+                </div>
             </div>
         `;
     }
@@ -8072,7 +8719,7 @@ return results;
 
             document.getElementById(
                 'verb-tree-title'
-            ).textContent = dictionaryForm;
+            ).textContent = '';
 
             document.getElementById(
                 'verb-tree-content'
@@ -8097,8 +8744,7 @@ return results;
 
             document.getElementById(
                 'verb-tree-subtitle'
-            ).textContent =
-                `${entry.reading || ''} · ${entry.verb_class}`;
+            ).textContent = '';
 
             const treeHTML = await renderVerbTree(
                 dictionaryForm,
