@@ -8830,6 +8830,120 @@ function attachVerbsToImportedWords(parsedWords, verbs) {
         return pool;
     }
 
+    function prefetchUpcomingSentenceVerbs() {
+
+        // 只预计算后面 6 句：N+1 ~ N+6
+        const startIndex =
+            sentenceSession.index + 1;
+
+        const endIndex =
+            Math.min(
+                startIndex + 6,
+                sentenceSession.items.length
+            );
+
+        const tasks = [];
+
+        for (
+            let i = startIndex;
+            i < endIndex;
+            i++
+        ) {
+            const item =
+                sentenceSession.items[i];
+
+            if (
+                !item ||
+                !Array.isArray(item.verbData)
+            ) {
+                continue;
+            }
+
+            for (const verb of item.verbData) {
+
+                if (
+                    !verb ||
+                    !verb.dictionary_form ||
+                    !verb.surface_form
+                ) {
+                    continue;
+                }
+
+                tasks.push({
+                    dictionaryForm:
+                        verb.dictionary_form,
+
+                    surfaceForm:
+                        verb.surface_form
+                });
+            }
+        }
+
+
+        // 同一个动词 pair 不重复计算
+        const uniqueTasks = [
+            ...new Map(
+                tasks.map(task => [
+                    `${task.dictionaryForm}::${task.surfaceForm}`,
+                    task
+                ])
+            ).values()
+        ];
+
+
+        if (uniqueTasks.length === 0) {
+            return;
+        }
+
+
+        // 浏览器空闲时后台计算，不阻塞当前句子
+        const run = async () => {
+
+            for (const task of uniqueTasks) {
+
+                try {
+
+                    await resolveVerbPaths(
+                        task.dictionaryForm,
+                        task.surfaceForm
+                    );
+
+                } catch (error) {
+
+                    // prefetch 失败不能影响正常学习
+                    console.warn(
+                        '[VerbPrefetch] failed:',
+                        task.dictionaryForm,
+                        task.surfaceForm,
+                        error
+                    );
+                }
+            }
+        };
+
+
+        if ('requestIdleCallback' in window) {
+
+            requestIdleCallback(
+                () => {
+                    run();
+                },
+                {
+                    timeout: 1500
+                }
+            );
+
+        } else {
+
+            setTimeout(
+                () => {
+                    run();
+                },
+                100
+            );
+        }
+    }
+
     function startSentenceMode(limit = null) {
         cancelSentenceAutoNext();
         const pool = shuffleArray(buildSentencePool());
@@ -9282,8 +9396,14 @@ const item = sentenceSession.items[sentenceSession.index];
                 }
             }, 80);
         } else if (sentenceAutoNext) {
-            scheduleSentenceAutoNext(estimateSentenceReadingMs(item.text) + 2000, token);
+            scheduleSentenceAutoNext(
+                estimateSentenceReadingMs(item.text) + 2000,
+                token
+            );
         }
+
+        // 后台预计算 N+1 ~ N+6 的动词树
+        prefetchUpcomingSentenceVerbs();
     }
 
     function toggleSentenceTranslation() {
