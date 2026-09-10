@@ -8549,6 +8549,280 @@ return results;
     }
 
 
+    function getVerbPropertyClass(node) {
+        if (!node) {
+            return 'verb-prop-terminal';
+        }
+
+        if (
+            node.outputClass === 'te' ||
+            node.functionName === 'te'
+        ) {
+            return 'verb-prop-connective';
+        }
+
+        if (
+            node.outputClass === 'ichidan-derived' ||
+            node.functionName === 'potential' ||
+            node.functionName === 'passive' ||
+            node.functionName === 'causative'
+        ) {
+            return 'verb-prop-verb';
+        }
+
+        if (
+            node.outputClass === 'negative' ||
+            node.functionName === 'negative' ||
+            node.functionName === 'desiderative'
+        ) {
+            return 'verb-prop-adjective';
+        }
+
+        if (
+            node.outputClass === 'polite' ||
+            node.functionName === 'polite' ||
+            node.functionName === 'stem'
+        ) {
+            return 'verb-prop-noun';
+        }
+
+        return 'verb-prop-terminal';
+    }
+
+
+    function renderVerbUSideGroup(slotIndex, nodes) {
+        const slotMap = {
+            1: {
+                side: 'right',
+                x: 258,
+                y: 113
+            },
+            2: {
+                side: 'right',
+                x: 285,
+                y: 72
+            },
+            3: {
+                side: 'right',
+                x: 286,
+                y: 30
+            },
+            4: {
+                side: 'left',
+                x: 104,
+                y: 30
+            },
+            5: {
+                side: 'left',
+                x: 105,
+                y: 72
+            }
+        };
+
+        const slot = slotMap[slotIndex];
+
+        if (!slot || !nodes.length) {
+            return '';
+        }
+
+        const lineHeight = 13;
+        const totalHeight =
+            Math.max(
+                lineHeight,
+                (nodes.length - 1) * lineHeight
+            );
+
+        const startY =
+            slot.y - totalHeight / 2;
+
+        const horizontalX =
+            slot.side === 'right'
+                ? slot.x
+                : slot.x - 14;
+
+        const verticalX =
+            slot.side === 'right'
+                ? slot.x + 14
+                : slot.x - 14;
+
+        const textX =
+            slot.side === 'right'
+                ? verticalX + 4
+                : verticalX - 4;
+
+        const nodeHTML = nodes.map(
+            (node, index) => {
+                const y =
+                    startY +
+                    index * lineHeight;
+
+                const transform =
+                    slot.side === 'right'
+                        ? 'none'
+                        : 'translateX(-100%)';
+
+                return `
+                    <div
+                        class="verb-u-side-form"
+                        style="
+                            left:${textX}px;
+                            top:${y - 6}px;
+                            transform:${transform};
+                        "
+                    >
+                        ${escapeHtml(node.surface)}
+                    </div>
+                `;
+            }
+        ).join('');
+
+        return `
+            <div
+                class="verb-u-group-line horizontal"
+                style="
+                    left:${horizontalX}px;
+                    top:${slot.y}px;
+                    width:14px;
+                "
+            ></div>
+
+            <div
+                class="verb-u-group-line vertical"
+                style="
+                    left:${verticalX}px;
+                    top:${startY}px;
+                    height:${totalHeight}px;
+                "
+            ></div>
+
+            ${nodeHTML}
+        `;
+    }
+
+
+    async function renderVerbUMainBranch(
+        activeNode,
+        siblings,
+        activePath,
+        finalSurface
+    ) {
+        const activeIndex =
+            Math.max(
+                0,
+                siblings.findIndex(node =>
+                    node.functionName ===
+                        activeNode.functionName &&
+                    node.surface ===
+                        activeNode.surface
+                )
+            );
+
+        const siblingHTML = siblings
+            .map((node, index) => {
+                if (index === activeIndex) {
+                    return '';
+                }
+
+                const distance =
+                    index - activeIndex;
+
+                const left =
+                    195 + distance * 64;
+
+                return `
+                    <div
+                        class="
+                            verb-path-cell
+                            ${getVerbPropertyClass(node)}
+                        "
+                        style="
+                            position:absolute;
+                            left:${left}px;
+                            top:14px;
+                            transform:translateX(-50%);
+                        "
+                    >
+                        ${escapeHtml(node.surface)}
+
+                        <span class="verb-path-op">
+                            ${escapeHtml(node.functionName)}
+                        </span>
+                    </div>
+                `;
+            })
+            .join('');
+
+        const pathParts = [];
+
+        pathParts.push(`
+            <div
+                class="
+                    verb-path-cell
+                    path-lit
+                    ${getVerbPropertyClass(activeNode)}
+                "
+            >
+                ${escapeHtml(activeNode.surface)}
+
+                <span class="verb-path-op">
+                    ${escapeHtml(activeNode.functionName)}
+                </span>
+            </div>
+        `);
+
+        for (
+            let index = 1;
+            index < activePath.length;
+            index++
+        ) {
+            const node = activePath[index];
+
+            pathParts.push(`
+                <div class="verb-path-line"></div>
+
+                <div
+                    class="
+                        verb-path-cell
+                        path-lit
+                        ${getVerbPropertyClass(node)}
+                    "
+                >
+                    ${escapeHtml(
+                        getConnectorDisplaySurface(node)
+                    )}
+
+                    <span class="verb-path-op">
+                        ${escapeHtml(node.functionName)}
+                    </span>
+                </div>
+            `);
+        }
+
+        return `
+            <div
+                style="
+                    position:relative;
+                    width:390px;
+                    min-height:48px;
+                "
+            >
+                ${siblingHTML}
+
+                <div
+                    class="verb-path-chain"
+                    style="
+                        left:195px;
+                        top:14px;
+                        transform:translateX(-50%);
+                    "
+                >
+                    ${pathParts.join('')}
+                </div>
+            </div>
+        `;
+    }
+
+
     async function renderVerbTree(dictionaryForm, surfaceForm, entry, paths) {
         const firstLevel = await generateVerbFirstLevel(
             dictionaryForm,
@@ -8556,151 +8830,177 @@ return results;
         );
 
         const activePaths = Array.isArray(paths) ? paths : [];
-        const activeFirstKeys = new Set();
-        const activeCategories = new Set();
         const finalSurface = surfaceForm;
 
-        activePaths.forEach(path => {
-            if (path && path.length) {
-                activeFirstKeys.add(
-                    `${path[0].functionName}::${path[0].surface}`
-                );
-                if (path[0].memoryCategory) {
-                    activeCategories.add(path[0].memoryCategory);
-                }
-            }
-        });
+        let activePath = activePaths.find(
+            path => Array.isArray(path) && path.length
+        ) || [];
 
-        if (!activeCategories.size) {
-            firstLevel.forEach(node => {
-                if (node.surface === finalSurface && node.memoryCategory) {
-                    activeCategories.add(node.memoryCategory);
-                    activeFirstKeys.add(
-                        `${node.functionName}::${node.surface}`
-                    );
-                }
-            });
+        if (!activePath.length) {
+            const directNode = firstLevel.find(
+                node => node.surface === finalSurface
+            );
+
+            if (directNode) {
+                activePath = [directNode];
+            }
         }
 
+        const activeFirst = activePath[0] || null;
+
+        const activeCategory =
+            activeFirst?.memoryCategory ||
+            VERB_MEMORY_ORDER[0];
+
         const grouped = {};
+
         VERB_MEMORY_ORDER.forEach(category => {
             grouped[category] = [];
         });
+
         firstLevel.forEach(node => {
-            if (node.memoryCategory && grouped[node.memoryCategory]) {
+            if (
+                node.memoryCategory &&
+                grouped[node.memoryCategory]
+            ) {
                 grouped[node.memoryCategory].push(node);
             }
         });
 
-        // 当前主线永远旋转到 U 型最低切点。
-        // 从最低点沿逆时针永远保持：音便 → A → I → U → E → O。
-        let activeCategory = null;
-        for (const path of activePaths) {
-            if (path && path.length && path[0].memoryCategory) {
-                activeCategory = path[0].memoryCategory;
-                break;
-            }
-        }
-        if (!activeCategory) {
-            activeCategory = [...activeCategories][0] || VERB_MEMORY_ORDER[0];
-        }
-
-        const activeIndex = VERB_MEMORY_ORDER.indexOf(activeCategory);
-        const rotatedOrder = Array.from(
-            { length: VERB_MEMORY_ORDER.length },
-            (_, offset) => VERB_MEMORY_ORDER[
-                (activeIndex + offset + VERB_MEMORY_ORDER.length) % VERB_MEMORY_ORDER.length
-            ]
+        const startIndex = Math.max(
+            0,
+            VERB_MEMORY_ORDER.indexOf(activeCategory)
         );
 
-        function renderCategoryNodes(category, compact = false) {
-            const nodes = grouped[category] || [];
-            return nodes.map(node => {
-                const key = `${node.functionName}::${node.surface}`;
-                const isActive = activeFirstKeys.has(key);
-                const isFinal = node.surface === finalSurface;
+        const rotated = [];
+
+        for (let i = 0; i < VERB_MEMORY_ORDER.length; i++) {
+            rotated.push(
+                VERB_MEMORY_ORDER[
+                    (startIndex + i) %
+                    VERB_MEMORY_ORDER.length
+                ]
+            );
+        }
+
+        const slotClasses = [
+            'main',
+            'slot-a',
+            'slot-i',
+            'slot-u',
+            'slot-e',
+            'slot-o'
+        ];
+
+        const categoryHTML = rotated.map(
+            (category, index) => {
+                const meta = VERB_MEMORY_META[category];
+
                 return `
-                    <div class="verb-tree-node ${isActive ? 'active' : ''} ${isFinal ? 'final' : ''}">
-                        <div class="verb-tree-surface">${escapeHtml(node.surface)}</div>
-                        <div class="verb-tree-function">${escapeHtml(node.functionName)}</div>
+                    <div class="
+                        verb-u-category
+                        ${slotClasses[index]}
+                        ${index === 0 ? 'path-lit' : ''}
+                    ">
+                        ${escapeHtml(meta.label)}
+
+                        <span class="verb-u-memory">
+                            ${escapeHtml(meta.memory)}
+                        </span>
                     </div>
                 `;
-            }).join('');
+            }
+        ).join('');
+
+        const sideGroupsHTML = [];
+
+        for (let index = 1; index < rotated.length; index++) {
+            const category = rotated[index];
+            const nodes = grouped[category] || [];
+
+            if (!nodes.length) continue;
+
+            sideGroupsHTML.push(
+                renderVerbUSideGroup(
+                    index,
+                    nodes
+                )
+            );
         }
 
-        // offset 1~5 对应：右下、右中、右上、左上、左下。
-        // 因而视觉上从最低点逆时针读取时，顺序永远不变。
-        const slotClassByOffset = {
-            1: 'slot-right-low',
-            2: 'slot-right-mid',
-            3: 'slot-right-high',
-            4: 'slot-left-high',
-            5: 'slot-left-low'
-        };
+        let activeBranchHTML = '';
 
-        const ringParts = [];
-        for (let offset = 1; offset < rotatedOrder.length; offset++) {
-            const category = rotatedOrder[offset];
-            const meta = VERB_MEMORY_META[category];
-            ringParts.push(`
-                <div class="verb-ring-category ${slotClassByOffset[offset]}">
-                    <div class="verb-tree-category">${escapeHtml(meta.label)}</div>
-                    <div class="verb-tree-memory">${escapeHtml(meta.memory)}</div>
-                    <div class="verb-tree-nodes">${renderCategoryNodes(category, true)}</div>
-                </div>
-            `);
-        }
-
-        const activeMeta = VERB_MEMORY_META[activeCategory];
-        const activeNodes = grouped[activeCategory] || [];
-        let activeNodesHTML = '';
-
-        for (const node of activeNodes) {
-            const key = `${node.functionName}::${node.surface}`;
-            const isActive = activeFirstKeys.has(key);
-            const isFinal = node.surface === finalSurface;
-            let extensionHTML = '';
-
-            if (isActive) {
-                extensionHTML = await renderActivePathExtension(
-                    node,
-                    activePaths,
+        if (activeFirst) {
+            activeBranchHTML =
+                await renderVerbUMainBranch(
+                    activeFirst,
+                    grouped[activeCategory] || [],
+                    activePath,
                     finalSurface
                 );
-            }
-
-            activeNodesHTML += `
-                <div class="verb-active-node-wrap">
-                    <div class="verb-tree-node ${isActive ? 'active' : ''} ${isFinal ? 'final' : ''}">
-                        <div class="verb-tree-surface">${escapeHtml(node.surface)}</div>
-                        <div class="verb-tree-function">${escapeHtml(node.functionName)}</div>
-                    </div>
-                    ${extensionHTML}
-                </div>
-            `;
         }
 
         return `
-            <div class="verb-u-layout">
-                <div class="verb-root verb-root-in-u">
-                    <div class="verb-root-word">${escapeHtml(dictionaryForm)}</div>
-                    <div class="verb-root-class">${escapeHtml(entry.verb_class || '')}</div>
-                </div>
+            <div class="verb-u-viewport">
+                <div class="verb-u-scale">
 
-                <svg class="verb-u-rail" viewBox="0 0 600 250" preserveAspectRatio="none" aria-hidden="true">
-                    <path d="M70 30 C80 150 175 220 300 220 C425 220 520 150 530 30" />
-                </svg>
+                    <div class="verb-u-stage">
 
-                ${ringParts.join('')}
+                        <svg
+                            class="verb-u-arc"
+                            viewBox="0 0 390 142"
+                            aria-hidden="true"
+                        >
+                            <path
+                                d="
+                                    M123 30
+                                    C123 88 139 119 195 119
+                                    C251 119 267 88 267 30
+                                "
+                            />
+                        </svg>
 
-                <div class="verb-active-bottom">
-                    <div class="verb-tree-category">${escapeHtml(activeMeta.label)}</div>
-                    <div class="verb-tree-memory">${escapeHtml(activeMeta.memory)}</div>
-                    <div class="verb-active-stem"></div>
-                    <div class="verb-tree-nodes verb-active-first-nodes">
-                        ${activeNodesHTML}
+                        <div class="verb-u-root">
+                            <div class="verb-u-root-word">
+                                ${escapeHtml(dictionaryForm)}
+                            </div>
+
+                            <div class="verb-u-root-class">
+                                ${escapeHtml(entry.verb_class || '')}
+                            </div>
+                        </div>
+
+                        ${categoryHTML}
+
+                        ${sideGroupsHTML.join('')}
+
                     </div>
+
+                    ${activeBranchHTML}
+
                 </div>
+            </div>
+
+            <div class="verb-tree-legend">
+                <span class="verb-prop-connective">
+                    接续
+                </span>
+
+                <span class="verb-prop-verb">
+                    动词
+                </span>
+
+                <span class="verb-prop-adjective">
+                    形容词
+                </span>
+
+                <span class="verb-prop-noun">
+                    名词
+                </span>
+
+                <span class="verb-prop-terminal">
+                    终点
+                </span>
             </div>
         `;
     }
